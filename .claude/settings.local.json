@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd /d D:\\\\haleelo-tower)",
+      "Bash(node -e \"console.log\\('node ok'\\)\")",
+      "Bash(npm list *)",
+      "Bash(findstr docx *)",
+      "Bash(node -e \"require\\('docx'\\); console.log\\('docx ok'\\)\")",
+      "Bash(npm install *)",
+      "Bash(node build-plan.js)",
+      "Bash(npm root *)",
+      "Bash(node -e \"require\\('/usr/share/npm/node_modules/docx'\\); console.log\\('ok'\\)\")",
+      "Bash(node -e \"require\\('C:/Users/axmed/AppData/Roaming/npm/node_modules/docx'\\); console.log\\('docx found'\\)\")",
+      "Bash(node -e \"require\\('C:/Users/axmed/AppData/Roaming/npm/node_modules/pptxgenjs'\\); console.log\\('pptxgenjs found'\\)\")"
+    ]
+  }
+}

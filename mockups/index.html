@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Haleelo Tower — Premium Office Space</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'sans-serif'] },
+          colors: {
+            navy: { 800: '#1B2D4F', 900: '#0f1d33' },
+            gold: { 500: '#C9A052', 600: '#a87c30' }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    html { scroll-behavior: smooth; }
+  </style>
+</head>
+<body class="font-sans text-slate-800 bg-white antialiased">
+
+  <!-- ── NAVBAR ──────────────────────────────────────────── -->
+  <nav class="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
+    <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+      <!-- Logo -->
+      <a href="index.html" class="flex items-center gap-2.5">
+        <div class="w-8 h-8 bg-[#1B2D4F] rounded flex items-center justify-center">
+          <span class="text-[#C9A052] font-bold text-xs tracking-tight">HT</span>
+        </div>
+        <span class="font-semibold text-[#1B2D4F] text-lg tracking-tight">Haleelo Tower</span>
+      </a>
+      <!-- Nav links -->
+      <div class="hidden md:flex items-center gap-7 text-sm font-medium text-slate-500">
+        <a href="index.html" class="text-[#1B2D4F] font-semibold border-b-2 border-[#C9A052] pb-0.5">Home</a>
+        <a href="browse.html" class="hover:text-[#1B2D4F] transition-colors">Browse Spaces</a>
+        <a href="#conference" class="hover:text-[#1B2D4F] transition-colors">Conference Rooms</a>
+        <a href="#contact" class="hover:text-[#1B2D4F] transition-colors">Contact</a>
+      </div>
+      <!-- Actions -->
+      <div class="flex items-center gap-3">
+        <a href="tenant.html" class="hidden sm:inline-flex text-sm font-medium text-slate-600 hover:text-[#1B2D4F] px-3 py-1.5 rounded border border-slate-300 hover:border-[#1B2D4F] transition-all">
+          Log In
+        </a>
+        <a href="browse.html" class="text-sm font-semibold text-white bg-[#1B2D4F] px-4 py-2 rounded hover:bg-[#0f1d33] transition-colors">
+          Book a Space
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ── HERO ────────────────────────────────────────────── -->
+  <section class="bg-[#1B2D4F] text-white relative overflow-hidden">
+    <!-- Decorative circles -->
+    <div class="absolute -top-20 -right-20 w-80 h-80 rounded-full border border-white/10 pointer-events-none"></div>
+    <div class="absolute top-10 -right-10 w-56 h-56 rounded-full border border-white/5 pointer-events-none"></div>
+    <div class="absolute -bottom-24 -left-12 w-64 h-64 rounded-full border border-white/5 pointer-events-none"></div>
+
+    <div class="max-w-7xl mx-auto px-6 py-24 relative z-10">
+      <div class="max-w-2xl">
+        <div class="flex items-center gap-3 mb-5">
+          <span class="w-10 h-px bg-[#C9A052]"></span>
+          <span class="text-[#C9A052] text-sm font-semibold tracking-widest uppercase">Mogadishu's Premier Address</span>
+        </div>
+        <h1 class="text-4xl md:text-5xl font-bold leading-tight mb-5">
+          Where Your Business<br class="hidden md:block" /> Finds Its Place
+        </h1>
+        <p class="text-slate-300 text-lg leading-relaxed mb-8 max-w-xl">
+          Private offices, flexible conference rooms, and a full-floor basement space — all in one professionally managed building.
+        </p>
+        <div class="flex flex-wrap gap-3">
+          <a href="browse.html" class="px-6 py-3 bg-[#C9A052] hover:bg-[#a87c30] text-white font-semibold rounded transition-colors shadow">
+            Browse Available Spaces
+          </a>
+          <a href="#conference" class="px-6 py-3 border border-white/30 hover:border-white text-white font-medium rounded transition-colors">
+            View Conference Rooms
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stat strip -->
+    <div class="relative z-10 border-t border-white/10">
+      <div class="max-w-7xl mx-auto px-6 py-6 grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+        <div>
+          <div class="text-2xl font-bold text-white">16+</div>
+          <div class="text-slate-400 text-sm mt-0.5">Private Offices</div>
+        </div>
+        <div>
+          <div class="text-2xl font-bold text-white">3</div>
+          <div class="text-slate-400 text-sm mt-0.5">Conference Rooms</div>
+        </div>
+        <div>
+          <div class="text-2xl font-bold text-white">500</div>
+          <div class="text-slate-400 text-sm mt-0.5">Max Seating Capacity</div>
+        </div>
+        <div>
+          <div class="text-2xl font-bold text-white">4</div>
+          <div class="text-slate-400 text-sm mt-0.5">Floors + Basement</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── OUR SPACES ───────────────────────────────────────── -->
+  <section class="py-20 bg-slate-50">
+    <div class="max-w-7xl mx-auto px-6">
+      <div class="text-center mb-12">
+        <h2 class="text-3xl font-bold text-[#1B2D4F] mb-3">Our Spaces</h2>
+        <p class="text-slate-500 max-w-xl mx-auto text-base">From private offices for long-term tenants to conference rooms for your next big event — we have the right space.</p>
+      </div>
+      <div class="grid md:grid-cols-3 gap-6">
+
+        <!-- Private Offices -->
+        <div class="bg-white rounded-xl border border-slate-200 overflow-hidden hover:shadow-lg transition-all group">
+          <div class="h-44 bg-gradient-to-br from-slate-600 to-slate-900 relative flex items-end p-5">
+            <div class="absolute inset-0 flex items-center justify-center opacity-10 text-9xl select-none">🏢</div>
+            <div class="relative">
+              <span class="text-xs font-semibold text-[#C9A052] uppercase tracking-widest">Ground · Floors 1–2</span>
+              <h3 class="text-white font-bold text-xl mt-0.5">Private Offices</h3>
+            </div>
+          </div>
+          <div class="p-5">
+            <p class="text-slate-500 text-sm mb-5 leading-relaxed">16 fully furnished offices across multiple floors. Ideal for businesses seeking a permanent professional address.</p>
+            <div class="flex flex-wrap gap-2 mb-5">
+              <span class="text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded">Furnished</span>
+              <span class="text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded">Internet Included</span>
+              <span class="text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded">Monthly Billing</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <div>
+                <div class="text-xs text-slate-400 uppercase tracking-wide">Pricing</div>
+                <div class="text-[#C9A052] font-bold">Monthly Flat Rate</div>
+              </div>
+              <a href="browse.html" class="text-sm font-semibold text-[#1B2D4F] hover:text-[#C9A052] transition-colors">View Offices →</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Conference Rooms -->
+        <div class="bg-white rounded-xl border-2 border-[#1B2D4F] overflow-hidden hover:shadow-lg transition-all group relative">
+          <div class="absolute top-3 right-3 z-10 bg-[#C9A052] text-white text-xs font-bold px-2.5 py-1 rounded-full">Most Booked</div>
+          <div class="h-44 bg-gradient-to-br from-[#1B2D4F] to-[#2d4a7a] relative flex items-end p-5">
+            <div class="absolute inset-0 flex items-center justify-center opacity-10 text-9xl select-none">🎤</div>
+            <div class="relative">
+              <span class="text-xs font-semibold text-[#C9A052] uppercase tracking-widest">Floors 1 · 2 · 3</span>
+              <h3 class="text-white font-bold text-xl mt-0.5">Conference Rooms</h3>
+            </div>
+          </div>
+          <div class="p-5">
+            <p class="text-slate-500 text-sm mb-5 leading-relaxed">Three rooms seating 50, 100, and 500 guests. Equipped with projectors, whiteboards, and full AV systems.</p>
+            <div class="flex flex-wrap gap-2 mb-5">
+              <span class="text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded">Projector & AV</span>
+              <span class="text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded">Whiteboard</span>
+              <span class="text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded">Catering Available</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <div>
+                <div class="text-xs text-slate-400 uppercase tracking-wide">Pricing</div>
+                <div class="text-[#C9A052] font-bold">Per Session</div>
+              </div>
+              <a href="browse.html#conference" class="text-sm font-semibold text-[#1B2D4F] hover:text-[#C9A052] transition-colors">View Rooms →</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Basement -->
+        <div class="bg-white rounded-xl border border-slate-200 overflow-hidden hover:shadow-lg transition-all group">
+          <div class="h-44 bg-gradient-to-br from-stone-600 to-stone-900 relative flex items-end p-5">
+            <div class="absolute inset-0 flex items-center justify-center opacity-10 text-9xl select-none">🏗️</div>
+            <div class="relative">
+              <span class="text-xs font-semibold text-[#C9A052] uppercase tracking-widest">Basement Level</span>
+              <h3 class="text-white font-bold text-xl mt-0.5">Basement Space</h3>
+            </div>
+          </div>
+          <div class="p-5">
+            <p class="text-slate-500 text-sm mb-5 leading-relaxed">A large open-plan basement available as a complete package — ideal for storage, showrooms, or custom business use.</p>
+            <div class="flex flex-wrap gap-2 mb-5">
+              <span class="text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded">Full Floor</span>
+              <span class="text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded">Custom Use</span>
+              <span class="text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded">Exclusive Lease</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <div>
+                <div class="text-xs text-slate-400 uppercase tracking-wide">Available as</div>
+                <div class="text-[#C9A052] font-bold">Full Package</div>
+              </div>
+              <a href="browse.html" class="text-sm font-semibold text-[#1B2D4F] hover:text-[#C9A052] transition-colors">Learn More →</a>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ── HOW IT WORKS ─────────────────────────────────────── -->
+  <section class="py-20 bg-white">
+    <div class="max-w-7xl mx-auto px-6">
+      <div class="text-center mb-12">
+        <h2 class="text-3xl font-bold text-[#1B2D4F] mb-3">How It Works</h2>
+        <p class="text-slate-500">Book your space in four simple steps.</p>
+      </div>
+      <div class="grid md:grid-cols-4 gap-8 relative">
+        <!-- connector line (desktop only) -->
+        <div class="hidden md:block absolute top-7 left-[12.5%] right-[12.5%] h-px bg-slate-200 z-0"></div>
+
+        <div class="text-center relative z-10">
+          <div class="w-14 h-14 bg-[#1B2D4F] rounded-full flex items-center justify-center mx-auto mb-4 text-white font-bold text-lg shadow">1</div>
+          <h4 class="font-semibold text-[#1B2D4F] mb-2">Browse</h4>
+          <p class="text-slate-500 text-sm leading-relaxed">Explore offices and conference rooms. Filter by floor, type, capacity, and amenities.</p>
+        </div>
+        <div class="text-center relative z-10">
+          <div class="w-14 h-14 bg-[#1B2D4F] rounded-full flex items-center justify-center mx-auto mb-4 text-white font-bold text-lg shadow">2</div>
+          <h4 class="font-semibold text-[#1B2D4F] mb-2">Request & Pay</h4>
+          <p class="text-slate-500 text-sm leading-relaxed">Submit a booking request and pay via bank transfer, Zaad, or Edahab.</p>
+        </div>
+        <div class="text-center relative z-10">
+          <div class="w-14 h-14 bg-[#1B2D4F] rounded-full flex items-center justify-center mx-auto mb-4 text-white font-bold text-lg shadow">3</div>
+          <h4 class="font-semibold text-[#1B2D4F] mb-2">Get Approved</h4>
+          <p class="text-slate-500 text-sm leading-relaxed">Our team reviews and confirms your booking via WhatsApp, SMS, and email.</p>
+        </div>
+        <div class="text-center relative z-10">
+          <div class="w-14 h-14 bg-[#C9A052] rounded-full flex items-center justify-center mx-auto mb-4 text-white font-bold text-lg shadow">4</div>
+          <h4 class="font-semibold text-[#1B2D4F] mb-2">Move In</h4>
+          <p class="text-slate-500 text-sm leading-relaxed">Sign your contract digitally and access your tenant portal from day one.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── CONFERENCE ROOMS HIGHLIGHT ───────────────────────── -->
+  <section class="py-20 bg-slate-50" id="conference">
+    <div class="max-w-7xl mx-auto px-6">
+      <div class="text-center mb-12">
+        <h2 class="text-3xl font-bold text-[#1B2D4F] mb-3">Conference Rooms</h2>
+        <p class="text-slate-500 max-w-xl mx-auto">Book by session — morning, afternoon, or evening. All rooms include modern AV equipment.</p>
+      </div>
+
+      <!-- Session legend -->
+      <div class="flex flex-wrap justify-center gap-4 mb-10 text-sm">
+        <div class="flex items-center gap-2 bg-white border border-slate-200 rounded-full px-4 py-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
+          <span class="text-slate-600 font-medium">Morning</span>
+          <span class="text-slate-400">8:00 AM – 1:00 PM</span>
+        </div>
+        <div class="flex items-center gap-2 bg-white border border-slate-200 rounded-full px-4 py-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-orange-400"></span>
+          <span class="text-slate-600 font-medium">Afternoon</span>
+          <span class="text-slate-400">3:00 PM – 6:30 PM</span>
+        </div>
+        <div class="flex items-center gap-2 bg-white border border-slate-200 rounded-full px-4 py-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-indigo-400"></span>
+          <span class="text-slate-600 font-medium">Evening</span>
+          <span class="text-slate-400">7:00 PM – 11:00 PM</span>
+        </div>
+      </div>
+
+      <div class="grid md:grid-cols-3 gap-6">
+
+        <!-- Suite A — Floor 1 -->
+        <div class="bg-white rounded-xl border border-slate-200 overflow-hidden hover:shadow-md transition-all">
+          <div class="bg-gradient-to-br from-slate-600 to-slate-800 h-36 flex items-end p-5">
+            <div>
+              <span class="text-xs text-[#C9A052] font-semibold uppercase tracking-widest">Floor 1</span>
+              <h3 class="text-white font-bold text-lg mt-0.5">Haleelo Suite A</h3>
+            </div>
+          </div>
+          <div class="p-5">
+            <div class="flex flex-wrap gap-3 text-xs text-slate-500 mb-4">
+              <span class="flex items-center gap-1">👥 50 seats</span>
+              <span class="flex items-center gap-1">📽 Projector</span>
+              <span class="flex items-center gap-1">🖊 Whiteboard</span>
+            </div>
+            <div class="space-y-2.5 mb-5 text-sm">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-amber-400"></span><span class="text-slate-500">Morning</span></div>
+                <span class="font-semibold text-slate-700">Contact for pricing</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-orange-400"></span><span class="text-slate-500">Afternoon</span></div>
+                <span class="font-semibold text-slate-700">Contact for pricing</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-indigo-400"></span><span class="text-slate-500">Evening</span></div>
+                <span class="font-semibold text-slate-700">Contact for pricing</span>
+              </div>
+            </div>
+            <a href="browse.html" class="block text-center py-2.5 rounded border border-[#1B2D4F] text-[#1B2D4F] text-sm font-semibold hover:bg-[#1B2D4F] hover:text-white transition-all">Check Availability</a>
+          </div>
+        </div>
+
+        <!-- Suite B — Floor 2 (Popular) -->
+        <div class="bg-white rounded-xl border-2 border-[#1B2D4F] overflow-hidden hover:shadow-md transition-all relative">
+          <div class="absolute top-3 right-3 z-10 bg-[#C9A052] text-white text-xs font-bold px-2.5 py-1 rounded-full">Popular</div>
+          <div class="bg-gradient-to-br from-[#1B2D4F] to-[#2a4580] h-36 flex items-end p-5">
+            <div>
+              <span class="text-xs text-[#C9A052] font-semibold uppercase tracking-widest">Floor 2</span>
+              <h3 class="text-white font-bold text-lg mt-0.5">Haleelo Suite B</h3>
+            </div>
+          </div>
+          <div class="p-5">
+            <div class="flex flex-wrap gap-3 text-xs text-slate-500 mb-4">
+              <span>👥 100 seats</span>
+              <span>📽 Projector</span>
+              <span>🖊 Whiteboard</span>
+              <span>🎤 Microphone</span>
+            </div>
+            <div class="space-y-2.5 mb-5 text-sm">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-amber-400"></span><span class="text-slate-500">Morning</span></div>
+                <span class="font-semibold text-slate-700">Contact for pricing</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-orange-400"></span><span class="text-slate-500">Afternoon</span></div>
+                <span class="font-semibold text-slate-700">Contact for pricing</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-indigo-400"></span><span class="text-slate-500">Evening</span></div>
+                <span class="font-semibold text-slate-700">Contact for pricing</span>
+              </div>
+            </div>
+            <a href="browse.html" class="block text-center py-2.5 rounded bg-[#1B2D4F] text-white text-sm font-semibold hover:bg-[#0f1d33] transition-all">Check Availability</a>
+          </div>
+        </div>
+
+        <!-- Grand Hall — Floor 3 -->
+        <div class="bg-white rounded-xl border border-slate-200 overflow-hidden hover:shadow-md transition-all">
+          <div class="bg-gradient-to-br from-stone-700 to-stone-900 h-36 flex items-end p-5">
+            <div>
+              <span class="text-xs text-[#C9A052] font-semibold uppercase tracking-widest">Floor 3 · Main Hall</span>
+              <h3 class="text-white font-bold text-lg mt-0.5">Grand Conference Hall</h3>
+            </div>
+          </div>
+          <div class="p-5">
+            <div class="flex flex-wrap gap-3 text-xs text-slate-500 mb-4">
+              <span>👥 500 seats</span>
+              <span>📽 Full AV</span>
+              <span>🎤 Stage</span>
+              <span>🍽 Catering</span>
+            </div>
+            <div class="space-y-2.5 mb-5 text-sm">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-amber-400"></span><span class="text-slate-500">Morning</span></div>
+                <span class="font-semibold text-slate-700">Contact for pricing</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-orange-400"></span><span class="text-slate-500">Afternoon</span></div>
+                <span class="font-semibold text-slate-700">Contact for pricing</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-indigo-400"></span><span class="text-slate-500">Evening</span></div>
+                <span class="font-semibold text-slate-700">Contact for pricing</span>
+              </div>
+            </div>
+            <a href="browse.html" class="block text-center py-2.5 rounded border border-[#1B2D4F] text-[#1B2D4F] text-sm font-semibold hover:bg-[#1B2D4F] hover:text-white transition-all">Check Availability</a>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ── CTA ──────────────────────────────────────────────── -->
+  <section class="bg-[#1B2D4F] py-16" id="contact">
+    <div class="max-w-4xl mx-auto px-6 text-center">
+      <h2 class="text-3xl font-bold text-white mb-3">Ready to Find Your Space?</h2>
+      <p class="text-slate-300 mb-8 max-w-xl mx-auto">Browse available offices and conference rooms, or get in touch with our team for a personalised walkthrough.</p>
+      <div class="flex flex-wrap gap-3 justify-center">
+        <a href="browse.html" class="px-6 py-3 bg-[#C9A052] hover:bg-[#a87c30] text-white font-semibold rounded transition-colors">
+          Browse Spaces
+        </a>
+        <a href="tel:+252000000000" class="px-6 py-3 border border-white/30 hover:border-white text-white font-medium rounded transition-colors">
+          📞 Call Us
+        </a>
+        <a href="https://wa.me/252000000000" class="px-6 py-3 border border-white/30 hover:border-white text-white font-medium rounded transition-colors">
+          💬 WhatsApp
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── FOOTER ────────────────────────────────────────────── -->
+  <footer class="bg-slate-900 text-slate-400 py-12">
+    <div class="max-w-7xl mx-auto px-6">
+      <div class="grid md:grid-cols-4 gap-8 mb-10">
+        <div>
+          <div class="flex items-center gap-2 mb-4">
+            <div class="w-7 h-7 bg-[#1B2D4F] border border-[#C9A052] rounded flex items-center justify-center">
+              <span class="text-[#C9A052] font-bold text-xs">HT</span>
+            </div>
+            <span class="text-white font-semibold">Haleelo Tower</span>
+          </div>
+          <p class="text-sm leading-relaxed">Premium office and conference space in the heart of Mogadishu.</p>
+        </div>
+        <div>
+          <h4 class="text-white font-medium mb-4 text-sm uppercase tracking-widest">Spaces</h4>
+          <ul class="space-y-2 text-sm">
+            <li><a href="browse.html" class="hover:text-white transition-colors">Private Offices</a></li>
+            <li><a href="browse.html" class="hover:text-white transition-colors">Conference Rooms</a></li>
+            <li><a href="browse.html" class="hover:text-white transition-colors">Basement Space</a></li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="text-white font-medium mb-4 text-sm uppercase tracking-widest">Portal</h4>
+          <ul class="space-y-2 text-sm">
+            <li><a href="tenant.html" class="hover:text-white transition-colors">Tenant Login</a></li>
+            <li><a href="admin.html" class="hover:text-white transition-colors">Staff Portal</a></li>
+            <li><a href="#" class="hover:text-white transition-colors">Privacy Policy</a></li>
+            <li><a href="#" class="hover:text-white transition-colors">Terms & Conditions</a></li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="text-white font-medium mb-4 text-sm uppercase tracking-widest">Contact</h4>
+          <ul class="space-y-2.5 text-sm">
+            <li class="flex items-start gap-2"><span>📍</span> Mogadishu, Somalia</li>
+            <li class="flex items-start gap-2"><span>📞</span> +252 — — —</li>
+            <li class="flex items-start gap-2"><span>✉</span> info@halelotower.so</li>
+            <li class="flex items-start gap-2"><span>💬</span> WhatsApp available</li>
+          </ul>
+        </div>
+      </div>
+      <div class="border-t border-slate-800 pt-6 text-center text-xs text-slate-600">
+        © 2026 Haleelo Tower. All rights reserved. · Platform by <span class="text-slate-500">Your Agency Name</span>
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>

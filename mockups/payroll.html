@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Payroll Management — Haleelo Tower</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'sans-serif'] },
+          boxShadow: {
+            card: '0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)',
+            'card-md': '0 4px 12px rgba(0,0,0,0.07), 0 1px 3px rgba(0,0,0,0.04)',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    .nav-item { display:flex; align-items:center; gap:10px; padding:8px 12px; border-radius:8px; font-size:13.5px; font-weight:500; color:#94a3b8; cursor:pointer; border-left:2px solid transparent; transition:all 0.15s ease; margin-bottom:1px; }
+    .nav-item:hover { background:rgba(255,255,255,0.07); color:#e2e8f0; }
+    .nav-item.active { background:rgba(255,255,255,0.1); color:#ffffff; border-left-color:#C9A052; }
+    .nav-section-label { font-size:10px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:#475569; padding:0 12px; margin:16px 0 6px; }
+    .kpi-card { position:relative; overflow:hidden; }
+    .kpi-card::before { content:''; position:absolute; top:0; left:0; width:100%; height:3px; }
+    .kpi-card.blue::before   { background:#3b82f6; }
+    .kpi-card.green::before  { background:#10b981; }
+    .kpi-card.gold::before   { background:#C9A052; }
+    .kpi-card.purple::before { background:#8b5cf6; }
+    .badge { display:inline-flex; align-items:center; font-size:11px; font-weight:600; padding:2px 8px; border-radius:99px; }
+    .badge-paid     { background:#dbeafe; color:#1d4ed8; }
+    .badge-pending  { background:#fef3c7; color:#b45309; }
+    .badge-active   { background:#d1fae5; color:#065f46; }
+    .badge-leave    { background:#ede9fe; color:#5b21b6; }
+    .badge-internal { background:#dbeafe; color:#1e40af; }
+    .badge-maint    { background:#fef3c7; color:#92400e; }
+    .badge-cafe     { background:#fce7f3; color:#9d174d; }
+    ::-webkit-scrollbar { width:5px; } ::-webkit-scrollbar-track { background:transparent; } ::-webkit-scrollbar-thumb { background:#cbd5e1; border-radius:99px; }
+    .tab { padding:6px 14px; font-size:13px; font-weight:500; border-radius:6px; cursor:pointer; color:#64748b; transition:all 0.15s; }
+    .tab.active { background:#1B2D4F; color:#fff; }
+    .tab:not(.active):hover { background:#e2e8f0; }
+    .att-day { width:28px; height:28px; border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:600; cursor:pointer; }
+    .att-present { background:#d1fae5; color:#065f46; }
+    .att-absent  { background:#fee2e2; color:#dc2626; }
+    .att-leave   { background:#ede9fe; color:#5b21b6; }
+    .att-today   { outline:2px solid #C9A052; }
+  </style>
+</head>
+<body class="font-sans bg-[#F0F4F8] antialiased flex h-screen overflow-hidden">
+
+  <!-- ═══════════════════════════════════════════════
+       SIDEBAR
+  ═══════════════════════════════════════════════ -->
+  <aside class="w-[220px] bg-[#1B2D4F] flex flex-col flex-shrink-0 h-screen overflow-y-auto">
+    <div class="px-5 py-[18px] flex items-center gap-3">
+      <div class="w-8 h-8 rounded-lg bg-[#C9A052]/20 border border-[#C9A052]/40 flex items-center justify-center flex-shrink-0">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#C9A052" stroke-width="2" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M3 21h18M5 21V7l7-4 7 4v14M9 21V13h6v8"/></svg>
+      </div>
+      <div>
+        <div class="text-white font-semibold text-sm leading-tight">Haleelo Tower</div>
+        <div class="text-[#C9A052] text-[10px] font-medium mt-0.5 tracking-wide">Admin Portal</div>
+      </div>
+    </div>
+    <div class="mx-4 border-t border-white/10 mb-1"></div>
+
+    <nav class="flex-1 px-3 py-2">
+      <div class="nav-section-label">Main</div>
+      <a href="admin.html" class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="w-4 h-4 flex-shrink-0"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        Dashboard
+      </a>
+      <a href="browse.html" class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="w-4 h-4 flex-shrink-0"><rect x="3" y="4" width="18" height="18" rx="2"/><path stroke-linecap="round" d="M16 2v4M8 2v4M3 10h18"/></svg>
+        Bookings
+      </a>
+      <div class="nav-section-label">Management</div>
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="w-4 h-4 flex-shrink-0"><path stroke-linecap="round" d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path stroke-linecap="round" d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+        Tenants
+      </div>
+      <a href="finance.html" class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="w-4 h-4 flex-shrink-0"><path stroke-linecap="round" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 0v4m0 12v4M2 12h4m12 0h4"/><path stroke-linecap="round" d="M12 8v4l3 3"/></svg>
+        Finance
+      </a>
+      <div class="nav-item active">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="w-4 h-4 flex-shrink-0"><circle cx="12" cy="8" r="4"/><path stroke-linecap="round" d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/><path stroke-linecap="round" d="M16 3.13a4 4 0 010 7.75"/><path stroke-linecap="round" d="M21 21c0-3-2-5-5-5.5"/></svg>
+        Payroll
+      </div>
+      <div class="nav-section-label">Analytics</div>
+      <a href="reporting.html" class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="w-4 h-4 flex-shrink-0"><path stroke-linecap="round" d="M18 20V10M12 20V4M6 20v-6"/></svg>
+        Reports
+      </a>
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="w-4 h-4 flex-shrink-0"><circle cx="12" cy="12" r="3"/><path stroke-linecap="round" d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+        Maintenance
+      </div>
+      <div class="nav-section-label">System</div>
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="w-4 h-4 flex-shrink-0"><circle cx="12" cy="12" r="3"/><path stroke-linecap="round" d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+        Settings
+      </div>
+    </nav>
+
+    <div class="px-4 py-4 border-t border-white/10">
+      <div class="flex items-center gap-2.5">
+        <div class="w-8 h-8 rounded-full bg-[#C9A052] flex items-center justify-center text-white font-bold text-xs flex-shrink-0">AM</div>
+        <div class="min-w-0">
+          <div class="text-white text-xs font-semibold truncate">Ahmed Mohamed</div>
+          <div class="text-slate-400 text-[10px]">Finance Manager</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ═══════════════════════════════════════════════
+       MAIN
+  ═══════════════════════════════════════════════ -->
+  <div class="flex-1 flex flex-col overflow-hidden">
+
+    <!-- Top bar -->
+    <header class="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-6 flex-shrink-0 shadow-card">
+      <div>
+        <h1 class="text-slate-800 font-semibold text-sm">Payroll Management</h1>
+        <p class="text-slate-400 text-xs mt-0.5">May 2026 · 8 active employees</p>
+      </div>
+      <div class="flex items-center gap-3">
+        <!-- Month picker -->
+        <div class="flex items-center gap-1 bg-slate-100 rounded-lg px-3 py-1.5 text-sm font-medium text-slate-700 cursor-pointer">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-3.5 h-3.5 text-slate-500"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+          May 2026
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="w-3 h-3 text-slate-400 ml-1"><path stroke-linecap="round" d="M6 9l6 6 6-6"/></svg>
+        </div>
+        <button class="flex items-center gap-2 bg-[#1B2D4F] text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-[#243d6a] transition-colors">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4"><path stroke-linecap="round" d="M12 5v14M5 12l7 7 7-7"/></svg>
+          Run Payroll
+        </button>
+        <button class="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200 transition-colors relative">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="w-4.5 h-4.5 w-[18px] h-[18px]"><path stroke-linecap="round" d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/></svg>
+          <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full"></span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Scrollable content -->
+    <div class="flex-1 overflow-y-auto p-6 space-y-6">
+
+      <!-- KPI row -->
+      <div class="grid grid-cols-4 gap-4">
+        <div class="kpi-card blue bg-white rounded-xl p-4 shadow-card">
+          <div class="flex items-start justify-between mb-3">
+            <div class="w-9 h-9 bg-blue-50 rounded-lg flex items-center justify-center">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="1.8" class="w-5 h-5"><path stroke-linecap="round" d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path stroke-linecap="round" d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+            </div>
+            <span class="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">+1 new</span>
+          </div>
+          <div class="text-2xl font-bold text-slate-800">8</div>
+          <div class="text-xs text-slate-500 mt-0.5">Active Employees</div>
+        </div>
+        <div class="kpi-card gold bg-white rounded-xl p-4 shadow-card">
+          <div class="flex items-start justify-between mb-3">
+            <div class="w-9 h-9 bg-amber-50 rounded-lg flex items-center justify-center">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#C9A052" stroke-width="1.8" class="w-5 h-5"><rect x="2" y="7" width="20" height="14" rx="2"/><path stroke-linecap="round" d="M16 7V5a2 2 0 00-4 0v2M8 7V5a2 2 0 00-4 0v2"/><path stroke-linecap="round" d="M12 12v4m-2-2h4"/></svg>
+            </div>
+          </div>
+          <div class="text-2xl font-bold text-slate-800">$6,420</div>
+          <div class="text-xs text-slate-500 mt-0.5">Total Payroll — May</div>
+        </div>
+        <div class="kpi-card green bg-white rounded-xl p-4 shadow-card">
+          <div class="flex items-start justify-between mb-3">
+            <div class="w-9 h-9 bg-emerald-50 rounded-lg flex items-center justify-center">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="1.8" class="w-5 h-5"><path stroke-linecap="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            </div>
+            <span class="text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">6 sent</span>
+          </div>
+          <div class="text-2xl font-bold text-slate-800">6</div>
+          <div class="text-xs text-slate-500 mt-0.5">Payslips Generated</div>
+        </div>
+        <div class="kpi-card purple bg-white rounded-xl p-4 shadow-card">
+          <div class="flex items-start justify-between mb-3">
+            <div class="w-9 h-9 bg-purple-50 rounded-lg flex items-center justify-center">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="1.8" class="w-5 h-5"><path stroke-linecap="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+            </div>
+            <span class="text-xs font-medium text-purple-600 bg-purple-50 px-2 py-0.5 rounded-full">2 pending</span>
+          </div>
+          <div class="text-2xl font-bold text-slate-800">3</div>
+          <div class="text-xs text-slate-500 mt-0.5">Leave Requests</div>
+        </div>
+      </div>
+
+      <!-- Main grid -->
+      <div class="grid grid-cols-3 gap-5">
+
+        <!-- Employee list (col-span-2) -->
+        <div class="col-span-2 bg-white rounded-xl shadow-card overflow-hidden">
+          <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+            <div>
+              <h2 class="text-slate-800 font-semibold text-sm">Employee Directory</h2>
+              <p class="text-slate-400 text-xs mt-0.5">8 employees · 3 departments</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <!-- Tabs -->
+              <div class="flex gap-1 bg-slate-100 p-1 rounded-lg">
+                <div class="tab active">All</div>
+                <div class="tab">Internal</div>
+                <div class="tab">Maintenance</div>
+                <div class="tab">Cafeteria</div>
+              </div>
+              <button class="flex items-center gap-1.5 text-xs font-medium text-[#1B2D4F] border border-[#1B2D4F]/20 px-3 py-1.5 rounded-lg hover:bg-[#1B2D4F]/5 transition-colors">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-3.5 h-3.5"><path stroke-linecap="round" d="M12 5v14M5 12l7 7 7-7"/></svg>
+                Add Employee
+              </button>
+            </div>
+          </div>
+
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="bg-slate-50 border-b border-slate-100">
+                <th class="text-left text-xs font-semibold text-slate-500 uppercase tracking-wider px-5 py-3">Employee</th>
+                <th class="text-left text-xs font-semibold text-slate-500 uppercase tracking-wider px-4 py-3">Department</th>
+                <th class="text-left text-xs font-semibold text-slate-500 uppercase tracking-wider px-4 py-3">Type</th>
+                <th class="text-right text-xs font-semibold text-slate-500 uppercase tracking-wider px-4 py-3">Base Pay</th>
+                <th class="text-right text-xs font-semibold text-slate-500 uppercase tracking-wider px-4 py-3">Net Pay (May)</th>
+                <th class="text-center text-xs font-semibold text-slate-500 uppercase tracking-wider px-4 py-3">Status</th>
+                <th class="px-4 py-3"></th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-50">
+              <!-- Row 1 -->
+              <tr class="hover:bg-slate-50/70 transition-colors">
+                <td class="px-5 py-3.5">
+                  <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-full bg-blue-100 text-blue-700 font-bold text-xs flex items-center justify-center flex-shrink-0">AM</div>
+                    <div>
+                      <div class="font-semibold text-slate-800 text-xs">Ahmed Mohamed</div>
+                      <div class="text-slate-400 text-xs">Finance Manager</div>
+                    </div>
+                  </div>
+                </td>
+                <td class="px-4 py-3.5"><span class="badge badge-internal">Internal</span></td>
+                <td class="px-4 py-3.5 text-xs text-slate-600">Salaried</td>
+                <td class="px-4 py-3.5 text-xs text-right font-semibold text-slate-700">$1,200/mo</td>
+                <td class="px-4 py-3.5 text-xs text-right font-bold text-slate-800">$1,320</td>
+                <td class="px-4 py-3.5 text-center"><span class="badge badge-paid">Sent</span></td>
+                <td class="px-4 py-3.5 text-right">
+                  <button class="text-slate-400 hover:text-[#1B2D4F] transition-colors">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+                  </button>
+                </td>
+              </tr>
+              <!-- Row 2 -->
+              <tr class="hover:bg-slate-50/70 transition-colors">
+                <td class="px-5 py-3.5">
+                  <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-full bg-purple-100 text-purple-700 font-bold text-xs flex items-center justify-center flex-shrink-0">FO</div>
+                    <div>
+                      <div class="font-semibold text-slate-800 text-xs">Faadumo Omar</div>
+                      <div class="text-slate-400 text-xs">Operations Lead</div>
+                    </div>
+                  </div>
+                </td>
+                <td class="px-4 py-3.5"><span class="badge badge-internal">Internal</span></td>
+                <td class="px-4 py-3.5 text-xs text-slate-600">Salaried</td>
+                <td class="px-4 py-3.5 text-xs text-right font-semibold text-slate-700">$950/mo</td>
+                <td class="px-4 py-3.5 text-xs text-right font-bold text-slate-800">$950</td>
+                <td class="px-4 py-3.5 text-center"><span class="badge badge-paid">Sent</span></td>
+                <td class="px-4 py-3.5 text-right">
+                  <button class="text-slate-400 hover:text-[#1B2D4F] transition-colors">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+                  </button>
+                </td>
+              </tr>
+              <!-- Row 3 -->
+              <tr class="hover:bg-slate-50/70 transition-colors">
+                <td class="px-5 py-3.5">
+                  <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-full bg-amber-100 text-amber-700 font-bold text-xs flex items-center justify-center flex-shrink-0">MH</div>
+                    <div>
+                      <div class="font-semibold text-slate-800 text-xs">Mustafa Hassan</div>
+                      <div class="text-slate-400 text-xs">Head of Maintenance</div>
+                    </div>
+                  </div>
+                </td>
+                <td class="px-4 py-3.5"><span class="badge badge-maint">Maintenance</span></td>
+                <td class="px-4 py-3.5 text-xs text-slate-600">Salaried</td>
+                <td class="px-4 py-3.5 text-xs text-right font-semibold text-slate-700">$700/mo</td>
+                <td class="px-4 py-3.5 text-xs text-right font-bold text-slate-800">$700</td>
+                <td class="px-4 py-3.5 text-center"><span class="badge badge-paid">Sent</span></td>
+                <td class="px-4 py-3.5 text-right">
+                  <button class="text-slate-400 hover:text-[#1B2D4F] transition-colors">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+                  </button>
+                </td>
+              </tr>
+              <!-- Row 4 -->
+              <tr class="hover:bg-slate-50/70 transition-colors">
+                <td class="px-5 py-3.5">
+                  <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-full bg-green-100 text-green-700 font-bold text-xs flex items-center justify-center flex-shrink-0">SA</div>
+                    <div>
+                      <div class="font-semibold text-slate-800 text-xs">Safia Abdi</div>
+                      <div class="text-slate-400 text-xs">Security Guard</div>
+                    </div>
+                  </div>
+                </td>
+                <td class="px-4 py-3.5"><span class="badge badge-maint">Maintenance</span></td>
+                <td class="px-4 py-3.5 text-xs text-slate-600">Daily Rate</td>
+                <td class="px-4 py-3.5 text-xs text-right font-semibold text-slate-700">$22/day</td>
+                <td class="px-4 py-3.5 text-xs text-right font-bold text-slate-800">$484</td>
+                <td class="px-4 py-3.5 text-center"><span class="badge badge-paid">Sent</span></td>
+                <td class="px-4 py-3.5 text-right">
+                  <button class="text-slate-400 hover:text-[#1B2D4F] transition-colors">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+                  </button>
+                </td>
+              </tr>
+              <!-- Row 5 -->
+              <tr class="hover:bg-slate-50/70 transition-colors">
+                <td class="px-5 py-3.5">
+                  <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-full bg-rose-100 text-rose-700 font-bold text-xs flex items-center justify-center flex-shrink-0">HI</div>
+                    <div>
+                      <div class="font-semibold text-slate-800 text-xs">Hodan Isse</div>
+                      <div class="text-slate-400 text-xs">Cafeteria Manager</div>
+                    </div>
+                  </div>
+                </td>
+                <td class="px-4 py-3.5"><span class="badge badge-cafe">Cafeteria</span></td>
+                <td class="px-4 py-3.5 text-xs text-slate-600">Salaried</td>
+                <td class="px-4 py-3.5 text-xs text-right font-semibold text-slate-700">$600/mo</td>
+                <td class="px-4 py-3.5 text-xs text-right font-bold text-amber-600">Pending</td>
+                <td class="px-4 py-3.5 text-center"><span class="badge badge-pending">Pending</span></td>
+                <td class="px-4 py-3.5 text-right">
+                  <button class="text-slate-400 hover:text-[#1B2D4F] transition-colors">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+                  </button>
+                </td>
+              </tr>
+              <!-- Row 6 -->
+              <tr class="hover:bg-slate-50/70 transition-colors">
+                <td class="px-5 py-3.5">
+                  <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-full bg-slate-100 text-slate-600 font-bold text-xs flex items-center justify-center flex-shrink-0">OA</div>
+                    <div>
+                      <div class="font-semibold text-slate-800 text-xs">Omar Ahmed</div>
+                      <div class="text-slate-400 text-xs">Cleaner</div>
+                    </div>
+                  </div>
+                </td>
+                <td class="px-4 py-3.5"><span class="badge badge-maint">Maintenance</span></td>
+                <td class="px-4 py-3.5 text-xs text-slate-600">Daily Rate</td>
+                <td class="px-4 py-3.5 text-xs text-right font-semibold text-slate-700">$18/day</td>
+                <td class="px-4 py-3.5 text-xs text-right font-bold text-amber-600">Pending</td>
+                <td class="px-4 py-3.5 text-center"><span class="badge badge-pending">Pending</span></td>
+                <td class="px-4 py-3.5 text-right">
+                  <button class="text-slate-400 hover:text-[#1B2D4F] transition-colors">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="px-5 py-3 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between">
+            <p class="text-xs text-slate-400">Showing 6 of 8 employees</p>
+            <button class="text-xs font-medium text-[#1B2D4F] hover:underline">View all employees →</button>
+          </div>
+        </div>
+
+        <!-- Right column -->
+        <div class="flex flex-col gap-5">
+
+          <!-- Payroll breakdown -->
+          <div class="bg-white rounded-xl shadow-card p-5">
+            <h3 class="text-sm font-semibold text-slate-800 mb-4">May 2026 Payroll</h3>
+            <div class="space-y-3">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <div class="w-2.5 h-2.5 rounded-full bg-blue-500 flex-shrink-0"></div>
+                  <span class="text-xs text-slate-600">Internal Staff (3)</span>
+                </div>
+                <span class="text-xs font-semibold text-slate-800">$3,150</span>
+              </div>
+              <div class="w-full bg-slate-100 rounded-full h-1.5">
+                <div class="bg-blue-500 h-1.5 rounded-full" style="width:49%"></div>
+              </div>
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <div class="w-2.5 h-2.5 rounded-full bg-amber-500 flex-shrink-0"></div>
+                  <span class="text-xs text-slate-600">Maintenance (3)</span>
+                </div>
+                <span class="text-xs font-semibold text-slate-800">$2,070</span>
+              </div>
+              <div class="w-full bg-slate-100 rounded-full h-1.5">
+                <div class="bg-amber-500 h-1.5 rounded-full" style="width:32%"></div>
+              </div>
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <div class="w-2.5 h-2.5 rounded-full bg-rose-500 flex-shrink-0"></div>
+                  <span class="text-xs text-slate-600">Cafeteria (2)</span>
+                </div>
+                <span class="text-xs font-semibold text-slate-800">$1,200</span>
+              </div>
+              <div class="w-full bg-slate-100 rounded-full h-1.5">
+                <div class="bg-rose-500 h-1.5 rounded-full" style="width:19%"></div>
+              </div>
+            </div>
+            <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
+              <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total</span>
+              <span class="text-base font-bold text-slate-800">$6,420</span>
+            </div>
+          </div>
+
+          <!-- Leave requests -->
+          <div class="bg-white rounded-xl shadow-card p-5 flex-1">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="text-sm font-semibold text-slate-800">Leave Requests</h3>
+              <span class="text-xs font-medium text-purple-600 bg-purple-50 px-2 py-0.5 rounded-full">2 pending</span>
+            </div>
+            <div class="space-y-3">
+              <div class="p-3 bg-purple-50/60 rounded-lg border border-purple-100">
+                <div class="flex items-start justify-between mb-1.5">
+                  <div class="flex items-center gap-2">
+                    <div class="w-6 h-6 rounded-full bg-purple-200 text-purple-700 font-bold text-[10px] flex items-center justify-center">FO</div>
+                    <span class="text-xs font-semibold text-slate-800">Faadumo Omar</span>
+                  </div>
+                  <span class="badge badge-leave text-[10px]">Annual</span>
+                </div>
+                <p class="text-[11px] text-slate-500 mb-2">May 26 – May 28 · 3 days</p>
+                <div class="flex gap-2">
+                  <button class="flex-1 text-[11px] font-semibold bg-[#1B2D4F] text-white py-1 rounded-md hover:bg-[#243d6a] transition-colors">Approve</button>
+                  <button class="flex-1 text-[11px] font-semibold bg-slate-100 text-slate-600 py-1 rounded-md hover:bg-slate-200 transition-colors">Decline</button>
+                </div>
+              </div>
+              <div class="p-3 bg-amber-50/60 rounded-lg border border-amber-100">
+                <div class="flex items-start justify-between mb-1.5">
+                  <div class="flex items-center gap-2">
+                    <div class="w-6 h-6 rounded-full bg-amber-200 text-amber-700 font-bold text-[10px] flex items-center justify-center">SA</div>
+                    <span class="text-xs font-semibold text-slate-800">Safia Abdi</span>
+                  </div>
+                  <span class="badge badge-pending text-[10px]">Sick</span>
+                </div>
+                <p class="text-[11px] text-slate-500 mb-2">May 20 – May 21 · 2 days</p>
+                <div class="flex gap-2">
+                  <button class="flex-1 text-[11px] font-semibold bg-[#1B2D4F] text-white py-1 rounded-md hover:bg-[#243d6a] transition-colors">Approve</button>
+                  <button class="flex-1 text-[11px] font-semibold bg-slate-100 text-slate-600 py-1 rounded-md hover:bg-slate-200 transition-colors">Decline</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Attendance tracker -->
+      <div class="bg-white rounded-xl shadow-card overflow-hidden">
+        <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+          <div>
+            <h2 class="text-slate-800 font-semibold text-sm">May 2026 Attendance</h2>
+            <p class="text-slate-400 text-xs mt-0.5">Click any day to update attendance</p>
+          </div>
+          <div class="flex items-center gap-4 text-xs text-slate-500">
+            <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-emerald-200 inline-block"></span> Present</span>
+            <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-red-200 inline-block"></span> Absent</span>
+            <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-purple-200 inline-block"></span> Leave</span>
+          </div>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-xs">
+            <thead>
+              <tr class="bg-slate-50 border-b border-slate-100">
+                <th class="text-left font-semibold text-slate-500 px-5 py-3 w-48">Employee</th>
+                <th class="font-semibold text-slate-400 px-1.5 py-3 text-center">1</th>
+                <th class="font-semibold text-slate-400 px-1.5 py-3 text-center">2</th>
+                <th class="font-semibold text-slate-400 px-1.5 py-3 text-center">5</th>
+                <th class="font-semibold text-slate-400 px-1.5 py-3 text-center">6</th>
+                <th class="font-semibold text-slate-400 px-1.5 py-3 text-center">7</th>
+                <th class="font-semibold text-slate-400 px-1.5 py-3 text-center">8</th>
+                <th class="font-semibold text-slate-400 px-1.5 py-3 text-center">9</th>
+                <th class="font-semibold text-slate-400 px-1.5 py-3 text-center">12</th>
+                <th class="font-semibold text-slate-400 px-1.5 py-3 text-center">13</th>
+                <th class="font-semibold text-slate-400 px-1.5 py-3 text-center">14</th>
+                <th class="font-semibold text-slate-400 px-1.5 py-3 text-center">15</th>
+                <th class="font-semibold text-slate-400 px-1.5 py-3 text-center">16</th>
+                <th class="font-semibold text-slate-400 px-1.5 py-3 text-center">19</th>
+                <th class="font-semibold text-slate-400 px-1.5 py-3 text-center">20</th>
+                <th class="font-semibold text-slate-400 px-1.5 py-3 text-center">21</th>
+                <th class="font-semibold text-[#C9A052] px-1.5 py-3 text-center">22</th>
+                <th class="font-semibold text-slate-300 px-1.5 py-3 text-center">23</th>
+                <th class="text-right font-semibold text-slate-500 px-5 py-3">Days / OT</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-50">
+              <tr class="hover:bg-slate-50/50">
+                <td class="px-5 py-2.5">
+                  <div class="flex items-center gap-2">
+                    <div class="w-6 h-6 rounded-full bg-blue-100 text-blue-700 font-bold text-[10px] flex items-center justify-center">AM</div>
+                    <span class="font-medium text-slate-700">Ahmed Mohamed</span>
+                  </div>
+                </td>
+                <td class="px-1.5 py-2.5 text-center"><div class="att-day att-present mx-auto">P</div></td>
+                <td class="px-1.5 py-2.5 text-center"><div class="att-day att-present mx-auto">P</div></td>
+                <td class="px-1.5 py-2.5 text-center"><div class="att-day att-present mx-auto">P</div></td>
+                <td class="px-1.5 py-2.5 text-center"><div class="att-day att-present mx-auto">P</div></td>
+                <td class="px-1.5 py-2.5 text-center"><div class="att-day att-present mx-auto">P</div></td>
+                <td class="px-1.5 py-2.5 text-center"><div class="att-day att-present mx-auto">P</div></td>
+                <td class="px-1.5 py-2.5 text-center"><div class="att-day att-present mx-auto">P</div></td>
+                <td class="px-1.5 py-2.5 text-center"><div class="att-day att-present mx-auto">P</div></td>
+                <td class="px-1.5 py-2.5 text-center"><div class="att-day att-present mx-auto">P</div></td>
+                <td class="px-1.5 py-2.5 text-center"><div class="att-day att-present mx-auto">P</div></td>
+                <td class="px-1.5 py-2.5 text-center"><div class="att-day att-present mx-auto">P</div></td>
+                <td class="px-1.5 py-2.5 text-center"><div class="att-day att-present mx-auto">P</div></td>
+                <td class="px-1.5 py-2.5 text-center"><div class="att-day att-present mx-auto">P</div></td>
+                <td class="px-1.5 py-2.5 text-center"><div class="att-day att-present mx-auto">P</div></td>
+                <td class="px-1.5 py-2.5 text-center"><div class="att-day att-present mx-auto">P</div></td>
+                <td class="px-1.5 py-2.5 text-center"><div class="att-day att-today att-present mx-auto">P</div></td>
+                <td class="px-1.5 py-2.5 text-center"><div class="att-day bg-slate-100 text-slate-300 mx-auto">-</div></td>
+                <td class="px-5 py-2.5 text-right font-semibold text-slate-700">16 / <span class="text-emerald-600">2h OT</span></td>
+              </tr>
+              <tr class="hover:bg-slate-50/50">
+                <td class="px-5 py-2.5">
+                  <div class="flex items-center gap-2">
+                    <div class="w-6 h-6 rounded-full bg-amber-100 text-amber-700 font-bold text-[10px] flex items-center justify-center">MH</div>
+                    <span class="font-medium text-slate-700">Mustafa Hassan</span>
+                  </div>
+                </td>
+                <td class="px-1.5 py-2.5 text-center"><div class="att-day att-present mx-auto">P</div></td>
+                <td class="px-1.5 py-2.5 text-center"><div class="att-day att-absent mx-auto">A</div></td>
+                <td class="px-1.5 py-2.5 text-center"><div class="att-day att-present mx-auto">P</div></td>
+                <td class="px-1.5 py-2.5 text-center"><div class="att-day att-present mx-auto">P</div></td>
+                <td class="px-1.5 py-2.5 text-center"><div class="att-day att-present mx-auto">P</div></td>
+                <td class="px-1.5 py-2.5 text-center"><div class="att-day att-present mx-auto">P</div></td>
+                <td class="px-1.5 py-2.5 text-center"><div class="att-day att-present mx-auto">P</div></td>
+                <td class="px-1.5 py-2.5 text-center"><div class="att-day att-present mx-auto">P</div></td>
+                <td class="px-1.5 py-2.5 text-center"><div class="att-day att-present mx-auto">P</div></td>
+                <td class="px-1.5 py-2.5 text-center"><div class="att-day att-present mx-auto">P</div></td>
+                <td class="px-1.5 py-2.5 text-center"><div class="att-day att-leave mx-auto">L</div></td>
+                <td class="px-1.5 py-2.5 text-center"><div class="att-day att-leave mx-auto">L</div></td>
+                <td class="px-1.5 py-2.5 text-center"><div class="att-day att-present mx-auto">P</div></td>
+                <td class="px-1.5 py-2.5 text-center"><div class="att-day att-present mx-auto">P</div></td>
+                <td class="px-1.5 py-2.5 text-center"><div class="att-day att-present mx-auto">P</div></td>
+                <td class="px-1.5 py-2.5 text-center"><div class="att-day att-today att-present mx-auto">P</div></td>
+                <td class="px-1.5 py-2.5 text-center"><div class="att-day bg-slate-100 text-slate-300 mx-auto">-</div></td>
+                <td class="px-5 py-2.5 text-right font-semibold text-slate-700">13 / <span class="text-red-500">1 absent</span></td>
+              </tr>
+              <tr class="hover:bg-slate-50/50">
+                <td class="px-5 py-2.5">
+                  <div class="flex items-center gap-2">
+                    <div class="w-6 h-6 rounded-full bg-rose-100 text-rose-700 font-bold text-[10px] flex items-center justify-center">HI</div>
+                    <span class="font-medium text-slate-700">Hodan Isse</span>
+                  </div>
+                </td>
+                <td class="px-1.5 py-2.5 text-center"><div class="att-day att-present mx-auto">P</div></td>
+                <td class="px-1.5 py-2.5 text-center"><div class="att-day att-present mx-auto">P</div></td>
+                <td class="px-1.5 py-2.5 text-center"><div class="att-day att-present mx-auto">P</div></td>
+                <td class="px-1.5 py-2.5 text-center"><div class="att-day att-present mx-auto">P</div></td>
+                <td class="px-1.5 py-2.5 text-center"><div class="att-day att-absent mx-auto">A</div></td>
+                <td class="px-1.5 py-2.5 text-center"><div class="att-day att-absent mx-auto">A</div></td>
+                <td class="px-1.5 py-2.5 text-center"><div class="att-day att-present mx-auto">P</div></td>
+                <td class="px-1.5 py-2.5 text-center"><div class="att-day att-present mx-auto">P</div></td>
+                <td class="px-1.5 py-2.5 text-center"><div class="att-day att-present mx-auto">P</div></td>
+                <td class="px-1.5 py-2.5 text-center"><div class="att-day att-present mx-auto">P</div></td>
+                <td class="px-1.5 py-2.5 text-center"><div class="att-day att-present mx-auto">P</div></td>
+                <td class="px-1.5 py-2.5 text-center"><div class="att-day att-present mx-auto">P</div></td>
+                <td class="px-1.5 py-2.5 text-center"><div class="att-day att-present mx-auto">P</div></td>
+                <td class="px-1.5 py-2.5 text-center"><div class="att-day att-present mx-auto">P</div></td>
+                <td class="px-1.5 py-2.5 text-center"><div class="att-day att-present mx-auto">P</div></td>
+                <td class="px-1.5 py-2.5 text-center"><div class="att-day att-today att-present mx-auto">P</div></td>
+                <td class="px-1.5 py-2.5 text-center"><div class="att-day bg-slate-100 text-slate-300 mx-auto">-</div></td>
+                <td class="px-5 py-2.5 text-right font-semibold text-slate-700">14 / <span class="text-red-500">2 absent</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Discovery Questionnaire II — Haleelo Tower</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'] } } }
+    }
+  </script>
+  <style>
+    @media print {
+      .no-print { display: none !important; }
+      body { background: white !important; }
+      .page-break { page-break-before: always; }
+    }
+    textarea {
+      resize: vertical;
+      min-height: 80px;
+      font-family: inherit;
+      line-height: 1.6;
+    }
+    textarea:focus { outline: none; border-color: #C9A052; box-shadow: 0 0 0 3px rgba(201,160,82,0.12); }
+    .section-teal   { background: #0d9488; }
+    .section-purple { background: #7c3aed; }
+    .section-blue   { background: #2563eb; }
+    .section-red    { background: #dc2626; }
+    .section-green  { background: #059669; }
+    .section-indigo { background: #4f46e5; }
+    .q-card { background: white; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 14px; overflow: hidden; }
+    .q-card:last-child { margin-bottom: 0; }
+  </style>
+</head>
+<body class="font-sans bg-[#0f1d33] antialiased">
+
+  <!-- ── PRINT BUTTON ─────────────────────────────────── -->
+  <div class="no-print fixed top-4 right-4 z-50 flex gap-2">
+    <button onclick="window.print()" class="flex items-center gap-2 bg-[#C9A052] hover:bg-[#a87c30] text-white text-sm font-semibold px-4 py-2 rounded-lg shadow-lg transition-colors">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+      Print / Save PDF
+    </button>
+    <a href="index.html" class="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+      ← Back
+    </a>
+  </div>
+
+  <div class="max-w-3xl mx-auto px-4 py-12 space-y-8">
+
+    <!-- ═══════════════════════════════════════════════════
+         COVER PAGE
+    ═══════════════════════════════════════════════════ -->
+    <div class="bg-[#1B2D4F] rounded-2xl overflow-hidden relative">
+      <!-- Decorative circles -->
+      <div class="absolute -top-16 -right-16 w-64 h-64 rounded-full border border-white/10 pointer-events-none"></div>
+      <div class="absolute top-8 -right-8 w-40 h-40 rounded-full border border-white/5 pointer-events-none"></div>
+      <div class="absolute -bottom-20 -left-10 w-56 h-56 rounded-full border border-white/5 pointer-events-none"></div>
+
+      <div class="relative z-10 p-10">
+        <p class="text-[#C9A052] text-xs font-semibold uppercase tracking-[0.2em] mb-6">Discovery Questionnaire · Round II</p>
+        <h1 class="text-4xl font-bold text-white mb-2 leading-tight">Haleelo Tower</h1>
+        <h2 class="text-xl font-semibold text-[#C9A052] mb-6">Commercial Building — Deep-Dive Assessment</h2>
+        <p class="text-slate-300 text-sm leading-relaxed max-w-lg">
+          This is the second round of discovery questions for Haleelo Tower — a commercial building offering <strong class="text-white">office spaces, corporate spaces, educational facility spaces, and conference halls</strong>. All 35 questions are new and cover the specific features a multi-tenant commercial building platform requires.
+        </p>
+
+        <div class="mt-8 pt-6 border-t border-white/10 grid grid-cols-3 gap-6">
+          <div>
+            <p class="text-[#C9A052] text-2xl font-bold">6</p>
+            <p class="text-slate-400 text-xs mt-0.5">Sections</p>
+          </div>
+          <div>
+            <p class="text-[#C9A052] text-2xl font-bold">35</p>
+            <p class="text-slate-400 text-xs mt-0.5">Questions</p>
+          </div>
+          <div>
+            <p class="text-[#C9A052] text-2xl font-bold">0</p>
+            <p class="text-slate-400 text-xs mt-0.5">Duplicates</p>
+          </div>
+        </div>
+
+        <!-- Section index -->
+        <div class="mt-8 grid grid-cols-2 gap-3 text-sm">
+          <div class="flex items-center gap-2.5">
+            <span class="w-2 h-2 rounded-full bg-teal-400 flex-shrink-0"></span>
+            <span class="text-slate-300">01 · Branding & Identity</span>
+          </div>
+          <div class="flex items-center gap-2.5">
+            <span class="w-2 h-2 rounded-full bg-purple-400 flex-shrink-0"></span>
+            <span class="text-slate-300">02 · Communication</span>
+          </div>
+          <div class="flex items-center gap-2.5">
+            <span class="w-2 h-2 rounded-full bg-blue-400 flex-shrink-0"></span>
+            <span class="text-slate-300">03 · Operations & Security</span>
+          </div>
+          <div class="flex items-center gap-2.5">
+            <span class="w-2 h-2 rounded-full bg-red-400 flex-shrink-0"></span>
+            <span class="text-slate-300">04 · Financial & Legal</span>
+          </div>
+          <div class="flex items-center gap-2.5">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 flex-shrink-0"></span>
+            <span class="text-slate-300">05 · Launch & Support</span>
+          </div>
+          <div class="flex items-center gap-2.5">
+            <span class="w-2 h-2 rounded-full bg-indigo-400 flex-shrink-0"></span>
+            <span class="text-slate-300">06 · Analytics & Growth</span>
+          </div>
+        </div>
+
+        <p class="text-slate-500 text-xs mt-8">Generated 30 April 2026</p>
+      </div>
+    </div>
+
+
+    <!-- ═══════════════════════════════════════════════════
+         SECTION 01 · BRANDING & IDENTITY
+    ═══════════════════════════════════════════════════ -->
+    <div>
+      <div class="section-teal text-white rounded-xl px-6 py-4 mb-4 flex items-center justify-between">
+        <div>
+          <p class="text-teal-200 text-xs font-semibold uppercase tracking-widest mb-0.5">Section One</p>
+          <h3 class="text-xl font-bold">01 · Branding & Visual Identity</h3>
+        </div>
+        <span class="text-teal-200 text-sm font-medium">Q1 – Q5</span>
+      </div>
+
+      <div class="space-y-3.5">
+
+        <div class="q-card">
+          <div class="px-5 pt-4 pb-1">
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Q1</p>
+            <p class="text-slate-800 font-semibold text-sm leading-relaxed">Do you have an existing logo, brand colors, or design guidelines for Haleelo Tower that we should incorporate into the platform's design?</p>
+          </div>
+          <div class="px-5 pb-4 pt-2">
+            <p class="text-xs text-teal-600 font-medium mb-2">Answer:</p>
+            <textarea class="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-700 placeholder:text-slate-300" placeholder="Describe your logo, colors, fonts, or attach brand guidelines…"></textarea>
+          </div>
+        </div>
+
+        <div class="q-card">
+          <div class="px-5 pt-4 pb-1">
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Q2</p>
+            <p class="text-slate-800 font-semibold text-sm leading-relaxed">Do you want the platform to live on a custom subdomain — for example, <span class="font-mono bg-slate-100 px-1 rounded text-xs">portal.halelotower.so</span> for tenants and <span class="font-mono bg-slate-100 px-1 rounded text-xs">admin.halelotower.so</span> for staff — or all under one domain?</p>
+          </div>
+          <div class="px-5 pb-4 pt-2">
+            <p class="text-xs text-teal-600 font-medium mb-2">Answer:</p>
+            <textarea class="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-700 placeholder:text-slate-300" placeholder="Preferred domain or subdomain structure…"></textarea>
+          </div>
+        </div>
+
+        <div class="q-card">
+          <div class="px-5 pt-4 pb-1">
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Q3</p>
+            <p class="text-slate-800 font-semibold text-sm leading-relaxed">Haleelo Tower rents educational facility spaces alongside offices and corporate spaces. What types of educational tenants currently rent or have expressed serious interest — for example, schools, vocational training academies, universities, coaching centers, or corporate training departments? What specific room setups do they typically need (e.g., classroom-style seating, partitioned rooms, projectors, whiteboards, lab equipment, or included furniture)?</p>
+          </div>
+          <div class="px-5 pb-4 pt-2">
+            <p class="text-xs text-teal-600 font-medium mb-2">Answer:</p>
+            <textarea class="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-700 placeholder:text-slate-300" placeholder="Types of educational tenants, their typical space setup requirements, and any special equipment they bring or need provided…"></textarea>
+          </div>
+        </div>
+
+        <div class="q-card">
+          <div class="px-5 pt-4 pb-1">
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Q4</p>
+            <p class="text-slate-800 font-semibold text-sm leading-relaxed">When a corporate tenant rents a corporate space rather than a standard office, what additional requirements do they typically expect — for example, a dedicated floor or wing, a branded reception area with their company signage, a private executive boardroom, a separate building entrance, or dedicated parking bays? Should the platform treat corporate spaces as a distinct category with its own contract template, invoice layout, and portal view?</p>
+          </div>
+          <div class="px-5 pb-4 pt-2">
+            <p class="text-xs text-teal-600 font-medium mb-2">Answer:</p>
+            <textarea class="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-700 placeholder:text-slate-300" placeholder="Corporate tenant requirements, any features that differ from standard office tenants, and whether separate contract or invoice templates are needed…"></textarea>
+          </div>
+        </div>
+
+        <div class="q-card">
+          <div class="px-5 pt-4 pb-1">
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Q5</p>
+            <p class="text-slate-800 font-semibold text-sm leading-relaxed">Do you have professional photographs or video tours of your offices, conference rooms, and building common areas that we can use on the public-facing booking site?</p>
+          </div>
+          <div class="px-5 pb-4 pt-2">
+            <p class="text-xs text-teal-600 font-medium mb-2">Answer:</p>
+            <textarea class="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-700 placeholder:text-slate-300" placeholder="Yes / No / Planned — describe what media assets are available…"></textarea>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+
+    <!-- ═══════════════════════════════════════════════════
+         SECTION 02 · COMMUNICATION & NOTIFICATIONS
+    ═══════════════════════════════════════════════════ -->
+    <div>
+      <div class="section-purple text-white rounded-xl px-6 py-4 mb-4 flex items-center justify-between">
+        <div>
+          <p class="text-purple-200 text-xs font-semibold uppercase tracking-widest mb-0.5">Section Two</p>
+          <h3 class="text-xl font-bold">02 · Communication & Notifications</h3>
+        </div>
+        <span class="text-purple-200 text-sm font-medium">Q6 – Q11</span>
+      </div>
+
+      <div class="space-y-3.5">
+
+        <div class="q-card">
+          <div class="px-5 pt-4 pb-1">
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Q6</p>
+            <p class="text-slate-800 font-semibold text-sm leading-relaxed">Do you want a built-in direct messaging feature inside the platform, so staff can send private messages to individual tenants and vice versa — without needing to switch to WhatsApp or email?</p>
+          </div>
+          <div class="px-5 pb-4 pt-2">
+            <p class="text-xs text-purple-600 font-medium mb-2">Answer:</p>
+            <textarea class="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-700 placeholder:text-slate-300" placeholder="Yes / No — and describe preferred communication flow…"></textarea>
+          </div>
+        </div>
+
+        <div class="q-card">
+          <div class="px-5 pt-4 pb-1">
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Q7</p>
+            <p class="text-slate-800 font-semibold text-sm leading-relaxed">Should management be able to broadcast announcements to all tenants at once — for example, scheduled maintenance, public holidays, new services, or building events — through the platform?</p>
+          </div>
+          <div class="px-5 pb-4 pt-2">
+            <p class="text-xs text-purple-600 font-medium mb-2">Answer:</p>
+            <textarea class="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-700 placeholder:text-slate-300" placeholder="Yes / No — and preferred channel (in-app, WhatsApp, email, or all)…"></textarea>
+          </div>
+        </div>
+
+        <div class="q-card">
+          <div class="px-5 pt-4 pb-1">
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Q8</p>
+            <p class="text-slate-800 font-semibold text-sm leading-relaxed">Which WhatsApp setup does Haleelo Tower currently use or plan to use for automated messages — a personal WhatsApp number, the WhatsApp Business app, or the WhatsApp Business API (which allows full automation and bulk messaging)?</p>
+          </div>
+          <div class="px-5 pb-4 pt-2">
+            <p class="text-xs text-purple-600 font-medium mb-2">Answer:</p>
+            <textarea class="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-700 placeholder:text-slate-300" placeholder="Current setup and willingness to upgrade for automation…"></textarea>
+          </div>
+        </div>
+
+        <div class="q-card">
+          <div class="px-5 pt-4 pb-1">
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Q9</p>
+            <p class="text-slate-800 font-semibold text-sm leading-relaxed">Haleelo Tower serves tenants with very different billing cycles — office and corporate tenants typically pay monthly, educational institutions may prefer semester-based billing (e.g., every 3–4 months aligned to academic terms), and conference hall clients pay per session. Should the platform support all three billing cycles simultaneously, and should each tenant's invoice schedule be set individually at the point of signing their agreement?</p>
+          </div>
+          <div class="px-5 pb-4 pt-2">
+            <p class="text-xs text-purple-600 font-medium mb-2">Answer:</p>
+            <textarea class="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-700 placeholder:text-slate-300" placeholder="Billing cycles currently used per tenant type, whether per-tenant configuration is needed, and any exceptions or custom arrangements…"></textarea>
+          </div>
+        </div>
+
+        <div class="q-card">
+          <div class="px-5 pt-4 pb-1">
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Q10</p>
+            <p class="text-slate-800 font-semibold text-sm leading-relaxed">Do you want all outgoing emails (invoices, booking confirmations, contract copies, reminders) to use a branded email template — with the Haleelo Tower logo, colors, and a professional footer?</p>
+          </div>
+          <div class="px-5 pb-4 pt-2">
+            <p class="text-xs text-purple-600 font-medium mb-2">Answer:</p>
+            <textarea class="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-700 placeholder:text-slate-300" placeholder="Yes / No — and any specific email sender name or address preferences…"></textarea>
+          </div>
+        </div>
+
+        <div class="q-card">
+          <div class="px-5 pt-4 pb-1">
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Q11</p>
+            <p class="text-slate-800 font-semibold text-sm leading-relaxed">Should tenants see a notification bell inside their portal for real-time alerts (new invoice, booking approved, maintenance update) — or is external communication via WhatsApp and email enough?</p>
+          </div>
+          <div class="px-5 pb-4 pt-2">
+            <p class="text-xs text-purple-600 font-medium mb-2">Answer:</p>
+            <textarea class="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-700 placeholder:text-slate-300" placeholder="In-app notifications needed / WhatsApp + email is enough…"></textarea>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+
+    <!-- ═══════════════════════════════════════════════════
+         SECTION 03 · BUILDING OPERATIONS & SECURITY
+    ═══════════════════════════════════════════════════ -->
+    <div>
+      <div class="section-blue text-white rounded-xl px-6 py-4 mb-4 flex items-center justify-between">
+        <div>
+          <p class="text-blue-200 text-xs font-semibold uppercase tracking-widest mb-0.5">Section Three</p>
+          <h3 class="text-xl font-bold">03 · Building Operations & Security</h3>
+        </div>
+        <span class="text-blue-200 text-sm font-medium">Q12 – Q17</span>
+      </div>
+
+      <div class="space-y-3.5">
+
+        <div class="q-card">
+          <div class="px-5 pt-4 pb-1">
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Q12</p>
+            <p class="text-slate-800 font-semibold text-sm leading-relaxed">What are the building's official operating hours on weekdays? Are the hours different on Fridays, weekends, or Somali public holidays — and should the platform reflect this when showing availability?</p>
+          </div>
+          <div class="px-5 pb-4 pt-2">
+            <p class="text-xs text-blue-600 font-medium mb-2">Answer:</p>
+            <textarea class="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-700 placeholder:text-slate-300" placeholder="e.g. Sat–Thu 8AM–6PM, Fri closed, holiday schedule…"></textarea>
+          </div>
+        </div>
+
+        <div class="q-card">
+          <div class="px-5 pt-4 pb-1">
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Q13</p>
+            <p class="text-slate-800 font-semibold text-sm leading-relaxed">Do tenants frequently bring guests or visitors into the building? If so, should the platform include a visitor log or pre-registration feature — where tenants can register expected visitors in advance?</p>
+          </div>
+          <div class="px-5 pb-4 pt-2">
+            <p class="text-xs text-blue-600 font-medium mb-2">Answer:</p>
+            <textarea class="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-700 placeholder:text-slate-300" placeholder="Yes / No — frequency of visitors and current sign-in process…"></textarea>
+          </div>
+        </div>
+
+        <div class="q-card">
+          <div class="px-5 pt-4 pb-1">
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Q14</p>
+            <p class="text-slate-800 font-semibold text-sm leading-relaxed">Should the system keep a full audit trail of every action taken by staff — for example, logging who approved a booking, who edited an invoice amount, or who deleted a tenant record? This is important for accountability.</p>
+          </div>
+          <div class="px-5 pb-4 pt-2">
+            <p class="text-xs text-blue-600 font-medium mb-2">Answer:</p>
+            <textarea class="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-700 placeholder:text-slate-300" placeholder="Yes / No — level of audit logging needed…"></textarea>
+          </div>
+        </div>
+
+        <div class="q-card">
+          <div class="px-5 pt-4 pb-1">
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Q15</p>
+            <p class="text-slate-800 font-semibold text-sm leading-relaxed">Should two-factor authentication (2FA) be required for admin and staff logins — for example, a verification code sent via SMS or WhatsApp every time they sign in?</p>
+          </div>
+          <div class="px-5 pb-4 pt-2">
+            <p class="text-xs text-blue-600 font-medium mb-2">Answer:</p>
+            <textarea class="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-700 placeholder:text-slate-300" placeholder="Required / Optional / Not needed…"></textarea>
+          </div>
+        </div>
+
+        <div class="q-card">
+          <div class="px-5 pt-4 pb-1">
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Q16</p>
+            <p class="text-slate-800 font-semibold text-sm leading-relaxed">Beyond bookable rooms, what shared building infrastructure needs to be managed through the platform? Consider: (a) <strong>building directory &amp; signage</strong> — should tenants be able to submit their company name and floor for the building's digital or physical directory through the platform? (b) <strong>tenant fit-out &amp; modifications</strong> — is there an approval workflow when a tenant wants to alter, partition, or fit out their space? (c) <strong>parking allocation</strong> — are parking bays assigned per tenant or first-come-first-served, and should allocations appear in the tenant portal? (d) <strong>mail &amp; courier handling</strong> — does the building receive deliveries on behalf of tenants, and should tenants get notified through the platform?</p>
+          </div>
+          <div class="px-5 pb-4 pt-2">
+            <p class="text-xs text-blue-600 font-medium mb-2">Answer:</p>
+            <textarea class="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-700 placeholder:text-slate-300" placeholder="Address each of the four areas (directory, fit-out approvals, parking, mail handling) — which apply and what the current process is…"></textarea>
+          </div>
+        </div>
+
+        <div class="q-card">
+          <div class="px-5 pt-4 pb-1">
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Q17</p>
+            <p class="text-slate-800 font-semibold text-sm leading-relaxed">Is there a reception desk or front desk at the building where walk-in clients and guests are received? Should the platform have a receptionist-facing "front desk mode" — optimised for quickly checking availability and handling walk-in enquiries?</p>
+          </div>
+          <div class="px-5 pb-4 pt-2">
+            <p class="text-xs text-blue-600 font-medium mb-2">Answer:</p>
+            <textarea class="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-700 placeholder:text-slate-300" placeholder="Yes / No — describe the reception workflow…"></textarea>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+
+    <!-- ═══════════════════════════════════════════════════
+         SECTION 04 · FINANCIAL DEPTH & LEGAL
+    ═══════════════════════════════════════════════════ -->
+    <div>
+      <div class="section-red text-white rounded-xl px-6 py-4 mb-4 flex items-center justify-between">
+        <div>
+          <p class="text-red-200 text-xs font-semibold uppercase tracking-widest mb-0.5">Section Four</p>
+          <h3 class="text-xl font-bold">04 · Financial Depth & Legal</h3>
+        </div>
+        <span class="text-red-200 text-sm font-medium">Q18 – Q23</span>
+      </div>
+
+      <div class="space-y-3.5">
+
+        <div class="q-card">
+          <div class="px-5 pt-4 pb-1">
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Q18</p>
+            <p class="text-slate-800 font-semibold text-sm leading-relaxed">Do you collect a security deposit from office tenants when they sign a lease? If yes, how much is it typically (e.g., one month's rent), how is it tracked, and how and when is it returned to the tenant?</p>
+          </div>
+          <div class="px-5 pb-4 pt-2">
+            <p class="text-xs text-red-600 font-medium mb-2">Answer:</p>
+            <textarea class="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-700 placeholder:text-slate-300" placeholder="Deposit amount, tracking method, conditions for return…"></textarea>
+          </div>
+        </div>
+
+        <div class="q-card">
+          <div class="px-5 pt-4 pb-1">
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Q19</p>
+            <p class="text-slate-800 font-semibold text-sm leading-relaxed">Do you charge late payment penalties when office rent is overdue? If yes, how is the fee structured — a fixed amount, a daily rate, or a percentage of the outstanding balance — and should the system calculate and add it automatically?</p>
+          </div>
+          <div class="px-5 pb-4 pt-2">
+            <p class="text-xs text-red-600 font-medium mb-2">Answer:</p>
+            <textarea class="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-700 placeholder:text-slate-300" placeholder="Late fee structure and whether it should be auto-applied…"></textarea>
+          </div>
+        </div>
+
+        <div class="q-card">
+          <div class="px-5 pt-4 pb-1">
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Q20</p>
+            <p class="text-slate-800 font-semibold text-sm leading-relaxed">Do any of your clients — such as government agencies, NGOs, or large corporations — require a Local Purchase Order (LPO) or formal procurement number before you can issue them an invoice? Should the platform support this workflow?</p>
+          </div>
+          <div class="px-5 pb-4 pt-2">
+            <p class="text-xs text-red-600 font-medium mb-2">Answer:</p>
+            <textarea class="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-700 placeholder:text-slate-300" placeholder="Yes / No — list client types that require LPOs…"></textarea>
+          </div>
+        </div>
+
+        <div class="q-card">
+          <div class="px-5 pt-4 pb-1">
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Q21</p>
+            <p class="text-slate-800 font-semibold text-sm leading-relaxed">Are there any tax, VAT, or statutory levy requirements that must appear on your invoices under Somali law or your clients' requirements? Should the system handle tax calculations automatically?</p>
+          </div>
+          <div class="px-5 pb-4 pt-2">
+            <p class="text-xs text-red-600 font-medium mb-2">Answer:</p>
+            <textarea class="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-700 placeholder:text-slate-300" placeholder="Tax or VAT requirements and applicable rates…"></textarea>
+          </div>
+        </div>
+
+        <div class="q-card">
+          <div class="px-5 pt-4 pb-1">
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Q22</p>
+            <p class="text-slate-800 font-semibold text-sm leading-relaxed">In commercial buildings it is common to charge tenants a <strong>service charge</strong> or <strong>Common Area Maintenance (CAM) fee</strong> — a recurring fee that covers shared costs such as cleaning of corridors and lobbies, security staff, electricity for common areas, elevator maintenance, and building insurance. Does Haleelo Tower currently charge such a fee? If yes, is it a fixed monthly amount per tenant, or is it calculated proportionally based on the size of each tenant's leased area? Should the platform include this as a separate line item on invoices and track it independently from rent?</p>
+          </div>
+          <div class="px-5 pb-4 pt-2">
+            <p class="text-xs text-red-600 font-medium mb-2">Answer:</p>
+            <textarea class="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-700 placeholder:text-slate-300" placeholder="Whether a service charge / CAM fee exists, how it is calculated, and whether it should appear as a separate line on invoices…"></textarea>
+          </div>
+        </div>
+
+        <div class="q-card">
+          <div class="px-5 pt-4 pb-1">
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Q23</p>
+            <p class="text-slate-800 font-semibold text-sm leading-relaxed">When a confirmed booking is cancelled, what is Haleelo Tower's current refund policy — full refund, partial refund based on notice period, or no refund? Should the platform automatically calculate and generate refund documents?</p>
+          </div>
+          <div class="px-5 pb-4 pt-2">
+            <p class="text-xs text-red-600 font-medium mb-2">Answer:</p>
+            <textarea class="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-700 placeholder:text-slate-300" placeholder="Refund policy details and whether automation is needed…"></textarea>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+
+    <!-- ═══════════════════════════════════════════════════
+         SECTION 05 · LAUNCH, TRAINING & SUPPORT
+    ═══════════════════════════════════════════════════ -->
+    <div>
+      <div class="section-green text-white rounded-xl px-6 py-4 mb-4 flex items-center justify-between">
+        <div>
+          <p class="text-emerald-200 text-xs font-semibold uppercase tracking-widest mb-0.5">Section Five</p>
+          <h3 class="text-xl font-bold">05 · Launch, Training & Support</h3>
+        </div>
+        <span class="text-emerald-200 text-sm font-medium">Q24 – Q29</span>
+      </div>
+
+      <div class="space-y-3.5">
+
+        <div class="q-card">
+          <div class="px-5 pt-4 pb-1">
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Q24</p>
+            <p class="text-slate-800 font-semibold text-sm leading-relaxed">Do you have a target go-live date in mind for when the platform should be fully operational? Is there a specific event, contract start date, or business milestone driving that deadline?</p>
+          </div>
+          <div class="px-5 pb-4 pt-2">
+            <p class="text-xs text-emerald-600 font-medium mb-2">Answer:</p>
+            <textarea class="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-700 placeholder:text-slate-300" placeholder="Target date and reason for the deadline…"></textarea>
+          </div>
+        </div>
+
+        <div class="q-card">
+          <div class="px-5 pt-4 pb-1">
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Q25</p>
+            <p class="text-slate-800 font-semibold text-sm leading-relaxed">Who within the Haleelo Tower team will be the primary internal point of contact after the platform goes live — responsible for reporting bugs, requesting changes, and coordinating with the development team?</p>
+          </div>
+          <div class="px-5 pb-4 pt-2">
+            <p class="text-xs text-emerald-600 font-medium mb-2">Answer:</p>
+            <textarea class="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-700 placeholder:text-slate-300" placeholder="Name, role, and contact info of internal system owner…"></textarea>
+          </div>
+        </div>
+
+        <div class="q-card">
+          <div class="px-5 pt-4 pb-1">
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Q26</p>
+            <p class="text-slate-800 font-semibold text-sm leading-relaxed">Before go-live, do you need a formal staff training session for each role (manager, receptionist, finance)? And would you like written user manuals, video walkthroughs, or both?</p>
+          </div>
+          <div class="px-5 pb-4 pt-2">
+            <p class="text-xs text-emerald-600 font-medium mb-2">Answer:</p>
+            <textarea class="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-700 placeholder:text-slate-300" placeholder="Training format preferences and number of staff to be trained…"></textarea>
+          </div>
+        </div>
+
+        <div class="q-card">
+          <div class="px-5 pt-4 pb-1">
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Q27</p>
+            <p class="text-slate-800 font-semibold text-sm leading-relaxed">Should we set up a staging environment — a private test version of the platform — where you can review and approve all features before they go live to real tenants and clients?</p>
+          </div>
+          <div class="px-5 pb-4 pt-2">
+            <p class="text-xs text-emerald-600 font-medium mb-2">Answer:</p>
+            <textarea class="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-700 placeholder:text-slate-300" placeholder="Yes / No — and preferred review/approval process…"></textarea>
+          </div>
+        </div>
+
+        <div class="q-card">
+          <div class="px-5 pt-4 pb-1">
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Q28</p>
+            <p class="text-slate-800 font-semibold text-sm leading-relaxed">Should the platform include a Help & FAQ section — accessible to both staff and tenants — with answers to common questions about bookings, payments, and policies? This reduces repetitive support calls.</p>
+          </div>
+          <div class="px-5 pb-4 pt-2">
+            <p class="text-xs text-emerald-600 font-medium mb-2">Answer:</p>
+            <textarea class="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-700 placeholder:text-slate-300" placeholder="Yes / No — and topics the FAQ should cover…"></textarea>
+          </div>
+        </div>
+
+        <div class="q-card">
+          <div class="px-5 pt-4 pb-1">
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Q29</p>
+            <p class="text-slate-800 font-semibold text-sm leading-relaxed">After the platform launches, what level of ongoing support do you expect — for example, a monthly maintenance retainer (bug fixes, updates, server monitoring), pay-per-issue support, or do you plan to handle technical matters internally?</p>
+          </div>
+          <div class="px-5 pb-4 pt-2">
+            <p class="text-xs text-emerald-600 font-medium mb-2">Answer:</p>
+            <textarea class="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-700 placeholder:text-slate-300" placeholder="Preferred support model and expected response time for issues…"></textarea>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+
+    <!-- ═══════════════════════════════════════════════════
+         SECTION 06 · ANALYTICS, GROWTH & SCALABILITY
+    ═══════════════════════════════════════════════════ -->
+    <div>
+      <div class="section-indigo text-white rounded-xl px-6 py-4 mb-4 flex items-center justify-between">
+        <div>
+          <p class="text-indigo-200 text-xs font-semibold uppercase tracking-widest mb-0.5">Section Six</p>
+          <h3 class="text-xl font-bold">06 · Analytics, Growth & Scalability</h3>
+        </div>
+        <span class="text-indigo-200 text-sm font-medium">Q30 – Q35</span>
+      </div>
+
+      <div class="space-y-3.5">
+
+        <div class="q-card">
+          <div class="px-5 pt-4 pb-1">
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Q30</p>
+            <p class="text-slate-800 font-semibold text-sm leading-relaxed">Would you like the platform to automatically email a summary report to management at the end of each week or month — covering total revenue, new bookings, occupancy rates, and overdue invoices — without needing to log in?</p>
+          </div>
+          <div class="px-5 pb-4 pt-2">
+            <p class="text-xs text-indigo-600 font-medium mb-2">Answer:</p>
+            <textarea class="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-700 placeholder:text-slate-300" placeholder="Yes / No — preferred frequency and recipient(s)…"></textarea>
+          </div>
+        </div>
+
+        <div class="q-card">
+          <div class="px-5 pt-4 pb-1">
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Q31</p>
+            <p class="text-slate-800 font-semibold text-sm leading-relaxed">Should the dashboard show historical trend comparisons — for example, how this month's revenue compares to the same month last year, or how occupancy this quarter compares to the previous quarter?</p>
+          </div>
+          <div class="px-5 pb-4 pt-2">
+            <p class="text-xs text-indigo-600 font-medium mb-2">Answer:</p>
+            <textarea class="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-700 placeholder:text-slate-300" placeholder="Yes / No — types of comparisons most useful to management…"></textarea>
+          </div>
+        </div>
+
+        <div class="q-card">
+          <div class="px-5 pt-4 pb-1">
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Q32</p>
+            <p class="text-slate-800 font-semibold text-sm leading-relaxed">Do you want demand analytics — data showing which specific rooms are booked most frequently, which session times (morning, afternoon, evening) are most popular, and which months are the busiest — to help you plan pricing and promotions?</p>
+          </div>
+          <div class="px-5 pb-4 pt-2">
+            <p class="text-xs text-indigo-600 font-medium mb-2">Answer:</p>
+            <textarea class="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-700 placeholder:text-slate-300" placeholder="Yes / No — specific insights most valuable to your operations…"></textarea>
+          </div>
+        </div>
+
+        <div class="q-card">
+          <div class="px-5 pt-4 pb-1">
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Q33</p>
+            <p class="text-slate-800 font-semibold text-sm leading-relaxed">Is there a future plan or interest in enabling fully online payments — where clients can pay directly on the platform via Zaad or EVC/Edahab API integration — so payment is confirmed instantly without manual follow-up?</p>
+          </div>
+          <div class="px-5 pb-4 pt-2">
+            <p class="text-xs text-indigo-600 font-medium mb-2">Answer:</p>
+            <textarea class="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-700 placeholder:text-slate-300" placeholder="Future interest level and any existing payment API relationships…"></textarea>
+          </div>
+        </div>
+
+        <div class="q-card">
+          <div class="px-5 pt-4 pb-1">
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Q34</p>
+            <p class="text-slate-800 font-semibold text-sm leading-relaxed">Should the platform support a waiting list for fully booked rooms or sessions — so an interested client can join a queue and automatically receive a notification if a cancellation opens up a slot?</p>
+          </div>
+          <div class="px-5 pb-4 pt-2">
+            <p class="text-xs text-indigo-600 font-medium mb-2">Answer:</p>
+            <textarea class="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-700 placeholder:text-slate-300" placeholder="Yes / No — and preferred notification method for waiting list alerts…"></textarea>
+          </div>
+        </div>
+
+        <div class="q-card">
+          <div class="px-5 pt-4 pb-1">
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Q35</p>
+            <p class="text-slate-800 font-semibold text-sm leading-relaxed">If Haleelo Tower expands to additional buildings or branches in the future, should the platform be architected from the start to support multiple locations under one system — with shared tenant records but separate room inventories, revenue tracking, and reports per building?</p>
+          </div>
+          <div class="px-5 pb-4 pt-2">
+            <p class="text-xs text-indigo-600 font-medium mb-2">Answer:</p>
+            <textarea class="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-700 placeholder:text-slate-300" placeholder="Yes / No — timeline for potential expansion and number of future locations…"></textarea>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+
+    <!-- ═══════════════════════════════════════════════════
+         FOOTER
+    ═══════════════════════════════════════════════════ -->
+    <div class="bg-[#1B2D4F] rounded-xl px-8 py-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div>
+        <p class="text-white font-semibold">Haleelo Tower — Platform Discovery Questionnaire</p>
+        <p class="text-slate-400 text-sm mt-0.5">Round II · 6 Sections · 35 Questions · Generated 30 April 2026</p>
+      </div>
+      <div class="flex items-center gap-2 flex-shrink-0">
+        <div class="w-7 h-7 bg-[#C9A052]/20 border border-[#C9A052]/40 rounded-lg flex items-center justify-center">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#C9A052" stroke-width="2" class="w-3.5 h-3.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 21h18M5 21V7l7-4 7 4v14M9 21V13h6v8"/>
+          </svg>
+        </div>
+        <span class="text-[#C9A052] font-semibold text-sm">Haleelo Tower</span>
+      </div>
+    </div>
+
+    <p class="text-center text-slate-600 text-xs pb-4">Page 1 of 1 · All 35 questions are new — no overlaps with the initial 40-question assessment.</p>
+
+  </div>
+</body>
+</html>
