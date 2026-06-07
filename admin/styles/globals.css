@@ -1,0 +1,57 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --primary: #1B2D4F;
+  --accent: #C9A052;
+  --primary-dark: #0f1d33;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Poppins', system-ui, sans-serif;
+}
+
+@layer components {
+  .btn-primary {
+    @apply px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors;
+  }
+
+  .btn-secondary {
+    @apply px-4 py-2 bg-gray-200 text-primary rounded-lg hover:bg-gray-300 transition-colors;
+  }
+
+  .btn-accent {
+    @apply px-4 py-2 bg-accent text-white rounded-lg hover:opacity-90 transition-opacity;
+  }
+
+  .input-base {
+    @apply w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary;
+  }
+
+  .card {
+    @apply bg-white rounded-lg shadow-md p-6;
+  }
+
+  .badge-success {
+    @apply inline-block px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium;
+  }
+
+  .badge-error {
+    @apply inline-block px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm font-medium;
+  }
+
+  .badge-warning {
+    @apply inline-block px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm font-medium;
+  }
+
+  .badge-info {
+    @apply inline-block px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium;
+  }
+}
