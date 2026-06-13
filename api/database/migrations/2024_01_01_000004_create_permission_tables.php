@@ -12,14 +12,14 @@ return new class extends Migration
             $table->id();
             $table->string('name')->unique();
             $table->string('guard_name')->default('web');
-            $table->timestamp('created_at')->useCurrent();
+            $table->timestamps();
         });
 
         Schema::create('roles', function (Blueprint $table) {
             $table->id();
             $table->string('name')->unique();
             $table->string('guard_name')->default('web');
-            $table->timestamp('created_at')->useCurrent();
+            $table->timestamps();
         });
 
         Schema::create('model_has_permissions', function (Blueprint $table) {

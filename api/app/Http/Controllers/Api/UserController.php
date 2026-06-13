@@ -16,35 +16,53 @@ class UserController extends Controller
     {
         $query = User::with('roles');
 
-        if ($request->has('search')) {
+        if ($request->filled('search')) {
             $search = $request->input('search');
-            $query->where('name', 'like', "%$search%")
-                ->orWhere('email', 'like', "%$search%");
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%$search%")
+                  ->orWhere('email', 'like', "%$search%");
+            });
         }
 
-        if ($request->has('role')) {
+        if ($request->filled('role')) {
             $query->role($request->input('role'));
         }
 
-        if ($request->has('status')) {
+        if ($request->filled('status')) {
             $query->where('status', $request->input('status'));
         }
 
-        $users = $query->latest('created_at')->paginate(25);
+        $paginator = $query->latest('created_at')->paginate(25);
 
-        return response()->json($users);
+        // Transform each item so is_locked and role are always present
+        $paginator->getCollection()->transform(fn ($user) => [
+            'id'                    => $user->id,
+            'name'                  => $user->name,
+            'email'                 => $user->email,
+            'job_title'             => $user->job_title,
+            'phone'                 => $user->phone,
+            'role'                  => $user->getRole(),
+            'status'                => $user->status,
+            'two_factor_enabled'    => (bool) $user->two_factor_enabled,
+            'is_locked'             => $user->isLocked(),
+            'locked_until'          => $user->locked_until?->toISOString(),
+            'failed_login_attempts' => (int) $user->failed_login_attempts,
+        ]);
+
+        return response()->json($paginator);
     }
 
     public function store(Request $request): JsonResponse
     {
         $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email',
-            'phone' => 'required|string|max:20',
-            'job_title' => 'required|string|max:255',
-            'role' => 'required|string|exists:roles,name',
-            'password' => 'nullable|string|min:8',
-            'status' => 'nullable|in:active,inactive',
+            'name'               => 'required|string|max:255',
+            'email'              => 'required|email|unique:users,email',
+            'phone'              => 'required|string|max:20',
+            'job_title'          => 'required|string|max:255',
+            'role'               => 'required|string|exists:roles,name',
+            'password'           => 'nullable|string|min:8',
+            'status'             => 'nullable|in:active,inactive',
+            'two_factor_enabled' => 'nullable|boolean',
         ]);
 
         try {
@@ -67,13 +85,14 @@ class UserController extends Controller
     public function update(Request $request, User $user): JsonResponse
     {
         $request->validate([
-            'name' => 'string|max:255',
-            'email' => 'email|unique:users,email,' . $user->id,
-            'phone' => 'string|max:20',
-            'job_title' => 'string|max:255',
-            'role' => 'string|exists:roles,name',
-            'status' => 'in:active,inactive',
-            'profile_photo_url' => 'nullable|url',
+            'name'               => 'string|max:255',
+            'email'              => 'email|unique:users,email,' . $user->id,
+            'phone'              => 'string|max:20',
+            'job_title'          => 'string|max:255',
+            'role'               => 'string|exists:roles,name',
+            'status'             => 'in:active,inactive',
+            'profile_photo_url'  => 'nullable|url',
+            'two_factor_enabled' => 'nullable|boolean',
         ]);
 
         try {
@@ -177,5 +196,15 @@ class UserController extends Controller
             'message' => 'User unlocked successfully.',
             'user' => $this->userService->getUserWithPermissions($user),
         ]);
+    }
+
+    public function resendInvite(User $user): JsonResponse
+    {
+        try {
+            $this->userService->sendInviteEmail($user);
+            return response()->json(['message' => "Invite email sent to {$user->email}."]);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Failed to send invite: ' . $e->getMessage()], 422);
+        }
     }
 }

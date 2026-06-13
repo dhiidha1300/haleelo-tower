@@ -22,7 +22,7 @@ psql -U postgres
 
 # Inside psql, paste all these:
 CREATE DATABASE haleelo_tower;
-CREATE USER haleelo_user WITH PASSWORD 'HaleeloPass123!';
+CREATE USER haleelo_user WITH PASSWORD 'Abc123@@!';
 ALTER ROLE haleelo_user SET client_encoding TO 'utf8';
 ALTER ROLE haleelo_user SET default_transaction_isolation TO 'read committed';
 ALTER ROLE haleelo_user SET default_transaction_deferrable TO ON;

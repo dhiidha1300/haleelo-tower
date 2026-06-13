@@ -1,0 +1,9 @@
+# ───────────────────────────────────────────────────────────────────────────
+# Laravel scheduler — drives invoice reminders, overdue escalation, monthly
+# rent invoices, lease-expiry & document-expiry alerts (app/Console/Kernel.php).
+# Install for the www-data user:
+#   sudo crontab -u www-data -e
+# then paste the single line below.
+# ───────────────────────────────────────────────────────────────────────────
+
+* * * * * cd /var/www/haleelo/api && php artisan schedule:run >> /var/log/haleelo/scheduler.log 2>&1

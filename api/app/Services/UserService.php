@@ -4,23 +4,26 @@ namespace App\Services;
 
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 
 class UserService
 {
     public function __construct(
         private AuthenticationService $authService,
-        private AuditService $auditService
+        private AuditService $auditService,
+        private EmailService $emailService
     ) {}
 
     public function createUser(array $data): User
     {
         $user = User::create([
-            'name' => $data['name'],
-            'job_title' => $data['job_title'] ?? null,
-            'email' => $data['email'],
-            'password' => $this->authService->hashPassword($data['password'] ?? $this->authService->generateTemporaryPassword()),
-            'phone' => $data['phone'] ?? null,
-            'status' => $data['status'] ?? 'active',
+            'name'               => $data['name'],
+            'job_title'          => $data['job_title'] ?? null,
+            'email'              => $data['email'],
+            'password'           => $this->authService->hashPassword($data['password'] ?? $this->authService->generateTemporaryPassword()),
+            'phone'              => $data['phone'] ?? null,
+            'status'             => $data['status'] ?? 'active',
+            'two_factor_enabled' => $data['two_factor_enabled'] ?? true,
         ]);
 
         if (!empty($data['role'])) {
@@ -28,6 +31,16 @@ class UserService
         }
 
         $this->auditService->log('created', User::class, $user->id, null, $user->toArray());
+
+        // Send invite email — failure is non-fatal so user creation still succeeds
+        try {
+            $this->sendInviteEmail($user->fresh());
+        } catch (\Exception $e) {
+            Log::warning('Invite email failed for new user', [
+                'user_id' => $user->id,
+                'error'   => $e->getMessage(),
+            ]);
+        }
 
         return $user->fresh();
     }
@@ -55,6 +68,9 @@ class UserService
         }
         if (isset($data['profile_photo_url'])) {
             $updateData['profile_photo_url'] = $data['profile_photo_url'];
+        }
+        if (isset($data['two_factor_enabled'])) {
+            $updateData['two_factor_enabled'] = (bool) $data['two_factor_enabled'];
         }
 
         $user->update($updateData);
@@ -123,15 +139,19 @@ class UserService
     public function getUserWithPermissions(User $user): array
     {
         return [
-            'id' => $user->id,
-            'name' => $user->name,
-            'email' => $user->email,
-            'job_title' => $user->job_title,
-            'phone' => $user->phone,
-            'status' => $user->status,
-            'profile_photo_url' => $user->profile_photo_url,
-            'role' => $user->getRole(),
-            'permissions' => $user->getPermissionsArray(),
+            'id'                     => $user->id,
+            'name'                   => $user->name,
+            'email'                  => $user->email,
+            'job_title'              => $user->job_title,
+            'phone'                  => $user->phone,
+            'status'                 => $user->status,
+            'profile_photo_url'      => $user->profile_photo_url,
+            'two_factor_enabled'     => (bool) $user->two_factor_enabled,
+            'is_locked'              => $user->isLocked(),
+            'locked_until'           => $user->locked_until?->toISOString(),
+            'failed_login_attempts'  => (int) $user->failed_login_attempts,
+            'role'                   => $user->getRole(),
+            'permissions'            => $user->getPermissionsArray(),
         ];
     }
 
@@ -139,5 +159,20 @@ class UserService
     {
         $user->unlock();
         return $user;
+    }
+
+    public function sendInviteEmail(User $user): void
+    {
+        $frontendUrl = env('ADMIN_URL', 'http://localhost:3000');
+        // Use a 24-hour token for invites (longer than a regular password reset)
+        $token      = $this->authService->generateResetToken($user, 1440);
+        $inviteUrl  = "{$frontendUrl}/auth/reset-password?token={$token}&email=" . urlencode($user->email) . '&invite=1';
+
+        $this->emailService->sendUserInvite(
+            $user->email,
+            $user->name,
+            $user->getRole(),
+            $inviteUrl
+        );
     }
 }

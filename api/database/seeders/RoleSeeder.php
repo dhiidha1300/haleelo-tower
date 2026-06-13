@@ -10,9 +10,9 @@ class RoleSeeder extends Seeder
 {
     public function run(): void
     {
-        // Clear existing roles and permissions
-        Role::query()->delete();
-        Permission::query()->delete();
+        // Reset only the permission cache — never delete roles or permissions,
+        // as that cascades to model_has_roles and strips all user role assignments.
+        app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
 
         // Create permissions
         $permissions = [
@@ -40,14 +40,18 @@ class RoleSeeder extends Seeder
             'manage-catering-packages',
 
             // Bookings (Phase 2)
+            'view-bookings',
             'create-booking',
             'approve-booking',
+            'finance-approve-booking',
             'reject-booking',
             'cancel-booking',
             'manage-waiting-list',
 
             // Tenants (Phase 2)
+            'view-tenants',
             'manage-tenants',
+            'view-leases',
             'manage-leases',
             'manage-tenant-documents',
 
@@ -60,9 +64,13 @@ class RoleSeeder extends Seeder
             'manage-vendor-bills',
             'record-expenses',
             'manage-accounts',
+            'view-accounts',
             'transfer-accounts',
             'manage-chart-of-accounts',
+            'view-chart-of-accounts',
+            'edit-account-codes',
             'create-journal-entries',
+            'view-journal-entries',
             'view-financial-reports',
             'export-financial-reports',
 
@@ -90,40 +98,70 @@ class RoleSeeder extends Seeder
         ];
 
         foreach ($permissions as $permission) {
-            Permission::create(['name' => $permission, 'guard_name' => 'web']);
+            Permission::firstOrCreate(['name' => $permission, 'guard_name' => 'web']);
         }
 
-        // Create roles
-        $superAdminRole = Role::create(['name' => 'super_admin', 'guard_name' => 'web']);
-        $adminRole = Role::create(['name' => 'admin', 'guard_name' => 'web']);
-        $operationsRole = Role::create(['name' => 'operations', 'guard_name' => 'web']);
-        $financeRole = Role::create(['name' => 'finance', 'guard_name' => 'web']);
+        // Create roles (idempotent — does not delete existing role-user assignments)
+        $superAdminRole = Role::firstOrCreate(['name' => 'super_admin', 'guard_name' => 'web']);
+        $adminRole      = Role::firstOrCreate(['name' => 'admin',       'guard_name' => 'web']);
+        $operationsRole = Role::firstOrCreate(['name' => 'operations',  'guard_name' => 'web']);
+        $financeRole    = Role::firstOrCreate(['name' => 'finance',     'guard_name' => 'web']);
 
         // Super Admin - Full access
         $superAdminRole->syncPermissions(Permission::all());
 
-        // Admin - Limited access
+        // Admin - Limited access (per Section 4.2 permissions matrix)
         $adminRole->syncPermissions([
+            // Settings — session times, payment terms, electricity, working hours, catering
+            // NOT: manage-settings, manage-email-settings, manage-whatsapp-settings (Super Admin only)
             'view-settings',
-            'manage-email-settings',
+
+            // User management — password reset and unlock only; NOT create/edit/deactivate
+            'reset-user-password',
+            'unlock-user',
+
+            // Audit
+            'view-audit-logs',
+            'export-audit-logs',
+
+            // Products & catering
             'view-products',
             'manage-products',
             'manage-catering-packages',
+
+            // Bookings
+            'view-bookings',
             'create-booking',
             'approve-booking',
             'reject-booking',
             'cancel-booking',
             'manage-waiting-list',
+
+            // Tenants
+            'view-tenants',
             'manage-tenants',
+            'view-leases',
             'manage-leases',
             'manage-tenant-documents',
-            'view-audit-logs',
+
+            // Finance (read / create invoices, not full financial ops)
             'manage-invoices',
             'send-invoice',
             'view-financial-reports',
+
+            // Accounting — read-only (per Section 4.2 matrix: Admin = R)
+            'view-chart-of-accounts',
+            'view-journal-entries',
+            'view-accounts',
+
+            // Electricity
             'record-electricity-readings',
+
+            // HR
             'manage-attendance',
             'manage-leave-requests',
+
+            // Maintenance & communications
             'manage-maintenance',
             'view-maintenance',
             'broadcast-announcements',
@@ -133,10 +171,13 @@ class RoleSeeder extends Seeder
         // Operations - Limited access
         $operationsRole->syncPermissions([
             'view-products',
+            'view-bookings',
             'create-booking',
             'manage-waiting-list',
+            'view-tenants',
             'manage-tenants',
             'manage-tenant-documents',
+            'view-leases',
             'manage-invoices',
             'view-maintenance',
             'view-announcements',
@@ -146,9 +187,13 @@ class RoleSeeder extends Seeder
         $financeRole->syncPermissions([
             'view-settings',
             'view-products',
+            'view-bookings',
+            'finance-approve-booking',
             'approve-booking',
             'reject-booking',
             'cancel-booking',
+            'view-tenants',
+            'view-leases',
             'manage-invoices',
             'send-invoice',
             'manage-payments',
@@ -157,9 +202,12 @@ class RoleSeeder extends Seeder
             'manage-vendor-bills',
             'record-expenses',
             'manage-accounts',
+            'view-accounts',
             'transfer-accounts',
             'manage-chart-of-accounts',
+            'view-chart-of-accounts',
             'create-journal-entries',
+            'view-journal-entries',
             'view-financial-reports',
             'export-financial-reports',
             'record-electricity-readings',

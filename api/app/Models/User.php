@@ -23,6 +23,7 @@ class User extends BaseUser
         'email',
         'password',
         'phone',
+        'two_factor_enabled',
         'status',
         'profile_photo_url',
         'two_factor_secret',
@@ -38,10 +39,11 @@ class User extends BaseUser
     ];
 
     protected $casts = [
-        'password' => 'hashed',
-        'email_verified_at' => 'datetime',
+        'password'                => 'hashed',
+        'email_verified_at'       => 'datetime',
         'two_factor_confirmed_at' => 'datetime',
-        'locked_until' => 'datetime',
+        'locked_until'            => 'datetime',
+        'two_factor_enabled'      => 'boolean',
     ];
 
     protected $attributes = [
@@ -122,7 +124,7 @@ class User extends BaseUser
 
     public function can2FA(): bool
     {
-        return !is_null($this->two_factor_confirmed_at);
+        return (bool) $this->two_factor_enabled && !empty($this->phone);
     }
 
     public function toArray()

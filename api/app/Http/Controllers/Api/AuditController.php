@@ -3,10 +3,14 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Exports\AuditLogsExport;
 use App\Models\AuditLog;
+use App\Models\User;
 use App\Services\AuditService;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Maatwebsite\Excel\Facades\Excel;
 
 class AuditController extends Controller
 {
@@ -15,14 +19,25 @@ class AuditController extends Controller
     public function index(Request $request): JsonResponse
     {
         $logs = $this->auditService->getLogsFiltered(
-            userId: $request->input('user_id'),
-            action: $request->input('action'),
+            userId:    $request->input('user_id'),
+            action:    $request->input('action'),
             modelType: $request->input('model_type'),
             startDate: $request->input('start_date'),
-            endDate: $request->input('end_date')
+            endDate:   $request->input('end_date'),
+            page:      (int) $request->input('page', 1),
         );
 
         return response()->json($logs);
+    }
+
+    public function users(): JsonResponse
+    {
+        $users = User::select('id', 'name', 'email')
+            ->withTrashed()
+            ->orderBy('name')
+            ->get();
+
+        return response()->json($users);
     }
 
     public function forModel(Request $request, string $modelType, int $modelId): JsonResponse
@@ -35,7 +50,7 @@ class AuditController extends Controller
         return response()->json($logs);
     }
 
-    public function export(Request $request): JsonResponse
+    public function export(Request $request)
     {
         $request->validate([
             'format' => 'required|in:pdf,excel',
@@ -50,14 +65,40 @@ class AuditController extends Controller
                 endDate: $request->input('end_date')
             );
 
-            // TODO: Implement PDF and Excel export using DomPDF and Maatwebsite/Excel
+            $logsCollection = $this->auditService->getLogsForExport(
+                userId:    $request->input('user_id'),
+                action:    $request->input('action'),
+                modelType: $request->input('model_type'),
+                startDate: $request->input('start_date'),
+                endDate:   $request->input('end_date'),
+            );
+
+            $filters = [
+                'start_date' => $request->input('start_date'),
+                'end_date'   => $request->input('end_date'),
+                'action'     => $request->input('action'),
+                'model_type' => $request->input('model_type'),
+            ];
 
             $this->auditService->logExport('Audit Logs');
 
-            return response()->json([
-                'message' => 'Export initiated.',
-                'format' => $request->format,
-            ]);
+            if ($request->format === 'pdf') {
+                $pdf = Pdf::loadView('pdfs.audit_logs', [
+                    'logs'    => $logsCollection,
+                    'filters' => $filters,
+                ])->setPaper('a4', 'landscape');
+
+                return response($pdf->output(), 200, [
+                    'Content-Type'        => 'application/pdf',
+                    'Content-Disposition' => 'attachment; filename="audit-logs-' . now()->format('Y-m-d') . '.pdf"',
+                ]);
+            }
+
+            // Excel
+            return Excel::download(
+                new AuditLogsExport($logsCollection),
+                'audit-logs-' . now()->format('Y-m-d') . '.xlsx'
+            );
         } catch (\Exception $e) {
             return response()->json([
                 'error' => 'Error',

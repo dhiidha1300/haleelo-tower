@@ -1,30 +1,24 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AuthContext, User } from '@/lib/auth';
 import { authAPI } from '@/lib/api';
+import api from '@/lib/api';
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchUser();
+    checkAuth();
   }, []);
 
-  const fetchUser = async () => {
+  const checkAuth = async () => {
     try {
-      const storedUser = localStorage.getItem('user');
-      if (storedUser) {
-        setUser(JSON.parse(storedUser));
-      } else {
-        const response = await authAPI.getMe();
-        setUser(response.data);
-        localStorage.setItem('user', JSON.stringify(response.data));
-      }
+      const response = await authAPI.getMe();
+      setUser(response.data);
     } catch (error) {
-      localStorage.removeItem('auth_token');
-      localStorage.removeItem('user');
+      // 401 interceptor already cleared localStorage. Just reset state here.
       setUser(null);
     } finally {
       setLoading(false);
@@ -33,32 +27,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (email: string, password: string) => {
     const response = await authAPI.login(email, password);
-    if (response.data.requires_2fa) {
-      return { requires_2fa: true, user_id: response.data.user_id };
+
+    if (response.data.token) {
+      localStorage.setItem('auth_token', response.data.token);
+      api.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
     }
-    setUser(response.data.user);
-    localStorage.setItem('user', JSON.stringify(response.data.user));
-    localStorage.setItem('auth_token', response.data.token);
-    return { requires_2fa: false, user_id: 0 };
+
+    if (!response.data.requires_2fa && response.data.user) {
+      setUser(response.data.user);
+    }
+
+    return response.data;
   };
 
   const verify2FA = async (userId: number, otp: string) => {
     const response = await authAPI.verify2FA(userId, otp);
-    setUser(response.data.user);
-    localStorage.setItem('user', JSON.stringify(response.data.user));
-    localStorage.setItem('auth_token', response.data.token);
+
+    if (response.data.token) {
+      localStorage.setItem('auth_token', response.data.token);
+      api.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
+    }
+
+    if (response.data.user) {
+      setUser(response.data.user);
+    }
   };
 
   const logout = async () => {
     try {
       await authAPI.logout();
-    } catch (error) {
-      console.error('Logout error:', error);
-    } finally {
-      localStorage.removeItem('auth_token');
-      localStorage.removeItem('user');
-      setUser(null);
-    }
+    } catch {}
+    localStorage.removeItem('auth_token');
+    delete api.defaults.headers.common['Authorization'];
+    setUser(null);
   };
 
   return (
@@ -70,7 +71,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         login,
         verify2FA,
         logout,
-        fetchUser,
+        checkAuth,
       }}
     >
       {children}

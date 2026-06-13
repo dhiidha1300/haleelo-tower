@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
@@ -55,7 +56,9 @@ class AuthenticationService
 
     public function createLoginToken(User $user): string
     {
-        return $user->createToken('auth_token')->plainTextToken;
+        $hours = (int) \App\Models\SystemSetting::get('session_timeout_hours', 8);
+        $expiry = now()->addHours(max(1, $hours));
+        return $user->createToken('auth_token', ['*'], $expiry)->plainTextToken;
     }
 
     public function logout(User $user): bool
@@ -95,5 +98,49 @@ class AuthenticationService
     public function hashPassword(string $password): string
     {
         return Hash::make($password);
+    }
+
+    public function generateResetToken(User $user, int $expiryMinutes = 60): string
+    {
+        $token = Str::random(64);
+
+        DB::table('password_reset_tokens')->upsert(
+            [
+                'email'      => $user->email,
+                'token'      => Hash::make($token),
+                'created_at' => now(),
+            ],
+            ['email'],
+            ['token', 'created_at']
+        );
+
+        return $token;
+    }
+
+    public function validateResetToken(string $email, string $token, int $expiryMinutes = 60): ?User
+    {
+        $record = DB::table('password_reset_tokens')
+            ->where('email', $email)
+            ->first();
+
+        if (!$record) return null;
+
+        if (now()->diffInMinutes($record->created_at) > $expiryMinutes) {
+            DB::table('password_reset_tokens')->where('email', $email)->delete();
+            return null;
+        }
+
+        if (!Hash::check($token, $record->token)) return null;
+
+        return User::byEmail($email)->first();
+    }
+
+    public function consumeResetToken(string $email, string $newPassword): bool
+    {
+        DB::table('password_reset_tokens')->where('email', $email)->delete();
+        $user = User::byEmail($email)->first();
+        if (!$user) return false;
+        $user->update(['password' => Hash::make($newPassword)]);
+        return true;
     }
 }

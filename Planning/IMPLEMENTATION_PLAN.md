@@ -1,7 +1,8 @@
 # HALEELO TOWER
 # Platform Implementation Plan
-Version 3.0  |  June 2026
+Version 3.1  |  June 2026
 Confidential — Build Specification for Claude Code CLI
+*(v3.1 adds Section 19 — Admin Panel Enhancements and Section 20 — Deployment Runbook on top of the completed v3.0 Phase 1–3 build.)*
 
 |  |  |
 | --- | --- |
@@ -1415,6 +1416,105 @@ WhatsApp Business API requires pre-approved message templates for outbound messa
 - 19. Queue: verify Horizon shows no failed jobs after running test scenarios
 - 20. Performance: dashboard KPIs load in <2 seconds on a clean cache
 
+# SECTION 19 — v3.1 ADMIN PANEL ENHANCEMENTS
+Version 3.1 incorporates a round of admin-experience enhancements layered on top of the completed Phase 1–3 build, plus the production deployment runbook for the admin dashboard. These items refine usability and operational speed; they do not change the data model or financial logic established in v3.0.
+
+## 19.1 Cross-Cutting UX Enhancements
+- **Staff Notification Bell** — A header bell with a live unread count. Aggregates everything that needs the signed-in user's attention, computed on demand (always accurate, never stale): bookings awaiting Admin approval, bookings awaiting Finance approval, leases awaiting approval, pending leave requests, overdue invoices, leases expiring within 10 days, and tenant documents expiring within 30 days. Polls every 60 seconds. Clicking an item navigates straight to the record. Role-aware — each user only sees alerts they can act on.
+- **Approvals Inbox** — A dedicated `/dashboard/inbox` screen consolidating every actionable item for the signed-in user into one prioritised list with inline action buttons (approve / reject / view). Replaces hunting across separate list pages.
+- **Global Command Palette (Ctrl/⌘ + K)** — A keyboard-driven quick switcher available on every screen. Searches across bookings (BK-), invoices (INV-), vendor bills (VB-), tenants, employees, and vendors by code or name, and offers instant navigation to any admin page. Backed by a single `GET /api/search?q=` endpoint that respects the user's permissions.
+- **Profile Photo Upload** — Staff can upload an avatar from the profile slide-over; stored via the Storage facade and surfaced on the header and user lists (`users.profile_photo_url`).
+- **Document Expiry Tracking** — `tenant_documents` gains an optional `expiry_date`. Documents nearing expiry (≤30 days) are surfaced in the notification bell and on the dashboard, so KYC papers, business registrations, and notarised contracts are renewed before they lapse.
+
+## 19.2 Tabbed Management Dashboard
+The dashboard is restructured from a single long scroll into a **tabbed, no-scroll layout**, each tab fitting one laptop viewport:
+- **Overview tab** — slim KPI strip (staff, tenants, leases, pending bookings, upcoming, overdue), the user's Action Center (approvals/alerts with inline buttons), and account-balance summary.
+- **Finance tab** — revenue this month / YTD, outstanding AR, overdue total, account balances, revenue-trend bar chart, and revenue-by-source doughnut (Finance / Admin / Super Admin only).
+- **Operations tab** — booking pipeline by status, upcoming bookings, waiting list, expiring leases, top-booked spaces and popular sessions.
+Tab visibility is role-aware; cards use fixed heights and denser spacing so no tab requires scrolling on a standard screen.
+
+## 19.3 Enhancement Feature Register (v3.1)
+
+| # | Feature | Area | Status |
+| --- | --- | --- | --- |
+| E1 | Staff notification bell with live counts (role-aware) | UX | Pilot |
+| E2 | Unified Approvals Inbox (`/dashboard/inbox`) | UX | Pilot |
+| E3 | Global command palette (Ctrl/⌘+K) + `/api/search` | UX | Pilot |
+| E4 | Profile photo upload | Users | Pilot |
+| E5 | Tenant document expiry date + expiry alerts | Tenants | Pilot |
+| E6 | Tabbed dashboard (Overview / Finance / Operations) | Dashboard | Pilot |
+
+# SECTION 20 — ADMIN PANEL DEPLOYMENT RUNBOOK (VPS)
+Production deployment of the admin dashboard (`admin.halelotower.so`) and the Laravel API (`api.halelotower.so`) onto the client VPS (Ubuntu 22.04). This is the concrete, step-by-step procedure referenced in Section 12.
+
+## 20.1 Server Prerequisites
+- Ubuntu 22.04 LTS VPS with a public IP and root/sudo SSH access
+- DNS A-records: `admin.halelotower.so` and `api.halelotower.so` → the VPS IP
+- Packages: PHP 8.3 + extensions (`php8.3-fpm php8.3-pgsql php8.3-mbstring php8.3-xml php8.3-bcmath php8.3-curl php8.3-zip php8.3-gd`), Composer, Node.js 20 + npm, PostgreSQL 16, Redis 7, Nginx, Certbot, Supervisor, Git
+
+## 20.2 Database
+```bash
+sudo -u postgres psql
+CREATE DATABASE haleelo_tower;
+CREATE USER haleelo_user WITH ENCRYPTED PASSWORD '<strong-password>';
+GRANT ALL PRIVILEGES ON DATABASE haleelo_tower TO haleelo_user;
+\q
+```
+
+## 20.3 API (Laravel) — `/var/www/api`
+```bash
+cd /var/www && git clone <repo> api && cd api
+composer install --no-dev --optimize-autoloader
+cp .env.example .env   # then edit (see 20.6)
+php artisan key:generate
+php artisan migrate --force
+php artisan db:seed --force        # RoleSeeder, SystemSettingsSeeder, ChartOfAccounts, Accounts, Floors, Spaces
+php artisan storage:link
+php artisan config:cache && php artisan route:cache && php artisan event:cache
+sudo chown -R www-data:www-data storage bootstrap/cache
+```
+
+## 20.4 Admin (Next.js) — `/var/www/admin`
+```bash
+cd /var/www && git clone <repo> admin && cd admin
+npm ci
+# set NEXT_PUBLIC_API_URL=https://api.halelotower.so in .env.local
+npm run build
+pm2 start "npm run start" --name haleelo-admin   # binds to port 3000
+pm2 save && pm2 startup
+```
+
+## 20.5 Nginx + SSL
+- Two server blocks: `api.halelotower.so` → PHP-FPM (Laravel `public/`), `admin.halelotower.so` → reverse proxy to `127.0.0.1:3000`.
+- `sudo certbot --nginx -d admin.halelotower.so -d api.halelotower.so` (auto-renew enabled).
+- The committed `deploy/` folder contains ready Nginx vhosts, the Supervisor Horizon config, the PM2 ecosystem file, and a `runbook.md` with the full command sequence.
+
+## 20.6 Production .env (API) — key differences from dev
+```
+APP_ENV=production
+APP_DEBUG=false
+APP_URL=https://api.halelotower.so
+ADMIN_URL=https://admin.halelotower.so
+SESSION_DOMAIN=.halelotower.so
+SESSION_SECURE_COOKIES=true
+SANCTUM_STATEFUL_DOMAINS=admin.halelotower.so
+FILESYSTEM_DISK=s3            # set AWS_* credentials, or keep 'public' if not using S3 yet
+QUEUE_CONNECTION=redis
+CACHE_DRIVER=redis
+RESEND_API_KEY=<key>          # required for email delivery
+WHATSAPP_* =<credentials>     # required for WhatsApp delivery
+```
+
+## 20.7 Background workers & cron
+- **Supervisor** runs Laravel Horizon (queue worker) — config in `deploy/horizon.conf`.
+- **Cron** — single entry: `* * * * * cd /var/www/api && php artisan schedule:run >> /dev/null 2>&1` (drives lease expiry, monthly invoices, reminders, monthly report).
+
+## 20.8 Post-deploy smoke test
+1. `https://admin.halelotower.so` loads; Super Admin logs in (2FA OTP delivered).
+2. Create a booking → approve chain → invoice auto-created.
+3. Record a payment → trial balance balanced.
+4. Horizon dashboard shows no failed jobs; `php artisan schedule:list` shows all scheduled commands.
+
 # END OF DOCUMENT
-Haleelo Tower — Platform Implementation Plan v3.0
+Haleelo Tower — Platform Implementation Plan v3.1
 June 2026 | Confidential

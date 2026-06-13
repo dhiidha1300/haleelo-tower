@@ -1,69 +1,74 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
+import { ProfilePanel } from './ProfilePanel';
+import { NotificationBell } from './NotificationBell';
+import { CommandPalette } from './CommandPalette';
 
-export function Header() {
-  const router = useRouter();
-  const { user, logout } = useAuth();
-  const [showMenu, setShowMenu] = useState(false);
-
-  const handleLogout = async () => {
-    await logout();
-    router.push('/auth/login');
-  };
-
-  return (
-    <header className="fixed top-0 left-64 right-0 bg-white border-b border-gray-200 p-6 flex justify-between items-center">
-      <div>
-        <h2 className="text-2xl font-bold text-primary">Dashboard</h2>
-      </div>
-
-      <div className="flex items-center gap-4 relative">
-        <button
-          onClick={() => setShowMenu(!showMenu)}
-          className="flex items-center gap-2 hover:bg-gray-100 px-3 py-2 rounded-lg"
-        >
-          <div className="text-right">
-            <p className="text-sm font-medium text-gray-900">{user?.name}</p>
-            <p className="text-xs text-gray-500 capitalize">{user?.role}</p>
-          </div>
-          <div className="w-10 h-10 bg-accent rounded-full flex items-center justify-center text-white font-bold">
-            {user?.name.charAt(0).toUpperCase()}
-          </div>
-        </button>
-
-        {showMenu && (
-          <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
-            <Link href="/profile" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-              Profile
-            </Link>
-            <Link href="/settings/general" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-              Settings
-            </Link>
-            <hr className="my-1" />
-            <button
-              onClick={handleLogout}
-              className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
-            >
-              Logout
-            </button>
-          </div>
-        )}
-      </div>
-    </header>
-  );
+interface HeaderProps {
+  onSidebarToggle: () => void;
+  sidebarOpen: boolean;
 }
 
-function Link({ href, children, className = '' }: any) {
-  const router = useRouter();
+export function Header({ onSidebarToggle, sidebarOpen }: HeaderProps) {
+  const { user } = useAuth();
+  const [profileOpen, setProfileOpen] = useState(false);
+  const avatar = (user as any)?.profile_photo_url as string | undefined;
+
   return (
-    <button
-      onClick={() => router.push(href)}
-      className={`block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 ${className}`}
-    >
-      {children}
-    </button>
+    <>
+      <header className="bg-white border-b border-gray-200 px-6 py-3 flex justify-between items-center flex-shrink-0">
+        {/* Sidebar toggle */}
+        <button
+          onClick={onSidebarToggle}
+          className="text-[#1B2D4F] hover:bg-gray-100 p-2 rounded-lg transition-colors"
+          title={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
+        >
+          <span className="text-xl">{sidebarOpen ? '←' : '→'}</span>
+        </button>
+
+        <div className="flex items-center gap-2">
+          {/* Global search trigger */}
+          <button
+            onClick={() => {
+              const evt = new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true });
+              window.dispatchEvent(evt);
+            }}
+            className="hidden md:flex items-center gap-2 text-gray-400 hover:bg-gray-100 border border-gray-200 px-3 py-1.5 rounded-lg transition-colors"
+            title="Search (Ctrl/⌘ + K)"
+          >
+            <span className="text-sm">🔍</span>
+            <span className="text-xs">Search…</span>
+            <kbd className="text-[10px] border rounded px-1 py-0.5 ml-2">⌘K</kbd>
+          </button>
+
+          {/* Notifications */}
+          <NotificationBell />
+
+          {/* User button */}
+          <button
+            onClick={() => setProfileOpen(true)}
+            className="flex items-center gap-3 hover:bg-gray-100 px-3 py-2 rounded-lg transition-colors"
+          >
+            <div className="text-right hidden sm:block">
+              <p className="text-sm font-semibold text-[#1B2D4F] leading-tight">{user?.name}</p>
+              <p className="text-xs text-gray-500 capitalize leading-tight">{user?.role?.replace('_', ' ')}</p>
+            </div>
+            {avatar ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={avatar} alt={user?.name ?? ''} className="w-9 h-9 rounded-full object-cover flex-shrink-0" />
+            ) : (
+              <div className="w-9 h-9 rounded-full bg-[#C9A052] flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                {user?.name?.charAt(0).toUpperCase()}
+              </div>
+            )}
+          </button>
+        </div>
+      </header>
+
+      <ProfilePanel open={profileOpen} onClose={() => setProfileOpen(false)} />
+      <CommandPalette />
+    </>
   );
 }

@@ -41,6 +41,27 @@ class AuditService
         $this->log('logout', User::class, $user->id);
     }
 
+    public function logFailedLogin(User $user, string $ip): void
+    {
+        AuditLog::create([
+            'user_id'    => null,
+            'user_name'  => 'System',
+            'user_role'  => 'system',
+            'action'     => 'failed_login',
+            'model_type' => User::class,
+            'model_id'   => $user->id,
+            'old_values' => null,
+            'new_values' => [
+                'email'            => $user->email,
+                'failed_attempts'  => $user->failed_login_attempts,
+                'locked'           => $user->isLocked(),
+                'ip_address'       => $ip,
+            ],
+            'ip_address' => $ip,
+            'created_at' => now(),
+        ]);
+    }
+
     public function logApproval(string $modelType, int $modelId, ?string $notes = null): void
     {
         $this->log('approved', $modelType, $modelId, null, ['notes' => $notes]);
@@ -64,31 +85,44 @@ class AuditService
             ->paginate(50);
     }
 
+    private function baseQuery(
+        ?int $userId,
+        ?string $action,
+        ?string $modelType,
+        ?string $startDate,
+        ?string $endDate
+    ) {
+        $query = AuditLog::query();
+        if ($userId)    $query->byUser($userId);
+        if ($action)    $query->byAction($action);
+        if ($modelType) $query->byModelType($modelType);
+        if ($startDate) $query->whereDate('created_at', '>=', $startDate);
+        if ($endDate)   $query->whereDate('created_at', '<=', $endDate);
+        return $query;
+    }
+
     public function getLogsFiltered(
+        ?int $userId = null,
+        ?string $action = null,
+        ?string $modelType = null,
+        ?string $startDate = null,
+        ?string $endDate = null,
+        int $page = 1
+    ) {
+        return $this->baseQuery($userId, $action, $modelType, $startDate, $endDate)
+            ->recent()
+            ->paginate(50, ['*'], 'page', $page);
+    }
+
+    public function getLogsForExport(
         ?int $userId = null,
         ?string $action = null,
         ?string $modelType = null,
         ?string $startDate = null,
         ?string $endDate = null
     ) {
-        $query = AuditLog::query();
-
-        if ($userId) {
-            $query->byUser($userId);
-        }
-
-        if ($action) {
-            $query->byAction($action);
-        }
-
-        if ($modelType) {
-            $query->byModelType($modelType);
-        }
-
-        if ($startDate && $endDate) {
-            $query->dateRange($startDate, $endDate);
-        }
-
-        return $query->recent()->paginate(50);
+        return $this->baseQuery($userId, $action, $modelType, $startDate, $endDate)
+            ->recent()
+            ->get();
     }
 }

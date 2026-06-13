@@ -56,10 +56,12 @@ class SystemSetting extends Model
         );
     }
 
-    public static function all()
+    public static function all($columns = ['*'])
     {
-        return Cache::remember(self::CACHE_ALL_KEY, self::CACHE_TTL, function () {
-            return parent::all()
+        return Cache::remember(self::CACHE_ALL_KEY, self::CACHE_TTL, function () use ($columns) {
+            return parent::query()
+                ->select($columns)
+                ->get()
                 ->keyBy('key')
                 ->map(fn($setting) => $setting->value)
                 ->toArray();
