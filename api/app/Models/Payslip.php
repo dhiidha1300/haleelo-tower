@@ -25,6 +25,11 @@ class Payslip extends Model
         'sent_via_email'        => 'boolean',
     ];
 
+    public function getPdfFileUrlAttribute($value): ?string
+    {
+        return \App\Support\FileStorage::url($value);
+    }
+
     public function payrollRun(): BelongsTo
     {
         return $this->belongsTo(PayrollRun::class);

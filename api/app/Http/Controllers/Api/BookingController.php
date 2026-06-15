@@ -130,6 +130,16 @@ class BookingController extends Controller
         );
     }
 
+    public function pdf(Booking $booking)
+    {
+        $pdf = $this->bookingService->generatePdf($booking);
+
+        return response($pdf, 200, [
+            'Content-Type'        => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="' . $booking->booking_code . '.pdf"',
+        ]);
+    }
+
     public function updateStatus(Request $request, Booking $booking): JsonResponse
     {
         $request->validate([

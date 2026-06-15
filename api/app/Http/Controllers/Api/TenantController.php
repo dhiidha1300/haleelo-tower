@@ -104,6 +104,18 @@ class TenantController extends Controller
         return response()->json($doc, 201);
     }
 
+    public function deleteDocument(Tenant $tenant, \App\Models\TenantDocument $document): JsonResponse
+    {
+        // Guard against mismatched IDs in the URL.
+        if ($document->tenant_id !== $tenant->id) {
+            return response()->json(['message' => 'Document does not belong to this tenant.'], 404);
+        }
+
+        $this->tenantService->deleteDocument($document);
+
+        return response()->json(['message' => 'Document deleted.']);
+    }
+
     public function generatePortalCredentials(Tenant $tenant): JsonResponse
     {
         $credentials = $this->tenantService->generatePortalCredentials($tenant);

@@ -72,13 +72,27 @@ export function ProfilePanel({ open, onClose }: ProfilePanelProps) {
   const uploadAvatar = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    // Client-side guards so the user gets instant, friendly feedback.
+    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    if (!allowed.includes(file.type)) {
+      if (fileRef.current) fileRef.current.value = '';
+      return showMsg('Please use a JPG, PNG, WEBP or GIF image. iPhone HEIC photos are not supported.', true);
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      if (fileRef.current) fileRef.current.value = '';
+      return showMsg('That image is over 8 MB. Please choose a smaller photo.', true);
+    }
+
     setUploading(true);
     try {
       await authAPI.uploadAvatar(file);
       await checkAuth(); // refresh user in context
       showMsg('Profile photo updated.');
     } catch (err: any) {
-      showMsg(err.response?.data?.message || 'Failed to upload photo.', true);
+      const data = err.response?.data;
+      const msg = data?.errors?.photo?.[0] || data?.message || 'Failed to upload photo.';
+      showMsg(msg, true);
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = '';

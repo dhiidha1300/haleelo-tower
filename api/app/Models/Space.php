@@ -24,6 +24,16 @@ class Space extends Model
         'capacity'   => 'integer',
     ];
 
+    /**
+     * photos holds raw object keys; expose them as usable (signed for S3) URLs.
+     * Use getRawOriginal('photos') when you need the underlying keys.
+     */
+    public function getPhotosAttribute($value): array
+    {
+        $keys = is_array($value) ? $value : (json_decode($value ?? '[]', true) ?: []);
+        return array_map(fn ($k) => \App\Support\FileStorage::url($k), $keys);
+    }
+
     public function floor(): BelongsTo
     {
         return $this->belongsTo(Floor::class);

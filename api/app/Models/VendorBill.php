@@ -23,6 +23,11 @@ class VendorBill extends Model
         'total_amount' => 'decimal:2',
     ];
 
+    public function getReceiptFileUrlAttribute($value): ?string
+    {
+        return \App\Support\FileStorage::url($value);
+    }
+
     public function vendor(): BelongsTo
     {
         return $this->belongsTo(Vendor::class);

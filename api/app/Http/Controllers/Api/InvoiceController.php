@@ -120,6 +120,14 @@ class InvoiceController extends Controller
         if ($invoice->status !== 'draft') {
             return response()->json(['message' => 'Only draft invoices can be deleted. Cancel a sent invoice instead.'], 422);
         }
+
+        // Operations staff (manage-invoices but not send-invoice) may only delete
+        // invoices they created. Finance/Admin (with send-invoice) can delete any.
+        $user = Auth::user();
+        if (!$user->hasPermissionTo('send-invoice') && $invoice->created_by !== $user->id) {
+            return response()->json(['message' => 'You can only delete invoices you created.'], 403);
+        }
+
         $invoice->delete();
         return response()->json(['message' => 'Invoice deleted.']);
     }

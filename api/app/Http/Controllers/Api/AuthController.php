@@ -219,13 +219,21 @@ class AuthController extends Controller
 
     public function uploadAvatar(Request $request): JsonResponse
     {
-        $request->validate(['photo' => 'required|image|max:4096']);
+        $request->validate([
+            // Restrict to web-displayable formats (HEIC/HEIF from iPhones cannot be
+            // shown in a browser) and allow up to 8 MB.
+            'photo' => 'required|image|mimes:jpeg,jpg,png,webp,gif|max:8192',
+        ], [
+            'photo.mimes' => 'Please use a JPG, PNG, WEBP or GIF image. iPhone HEIC photos are not supported — choose "Most Compatible" in Camera settings, or convert the photo first.',
+            'photo.max'   => 'The photo is too large. Please use an image under 8 MB.',
+            'photo.image' => 'The uploaded file is not a valid image.',
+        ]);
 
         $user = Auth::user();
-        $path = $request->file('photo')->store('avatars', 'public');
-        $url  = \Illuminate\Support\Facades\Storage::disk('public')->url($path);
+        // Store only the object key; the URL is produced (signed for S3) on read.
+        $path = \App\Support\FileStorage::put($request->file('photo'), 'avatars');
 
-        $user->update(['profile_photo_url' => $url]);
+        $user->update(['profile_photo_url' => $path]);
 
         return response()->json($this->userService->getUserWithPermissions($user->fresh()));
     }

@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Tenant;
 use App\Models\TenantDocument;
 use App\Models\User;
+use App\Services\AuditService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
@@ -42,18 +43,29 @@ class TenantService
 
     public function uploadDocument(Tenant $tenant, UploadedFile $file, string $docType, User $uploader, ?string $expiryDate = null): TenantDocument
     {
-        $path = $file->store("tenants/{$tenant->id}/documents", 'public');
-        $url  = Storage::disk('public')->url($path);
+        $path = \App\Support\FileStorage::put($file, "tenants/{$tenant->id}/documents");
 
         return TenantDocument::create([
             'tenant_id'     => $tenant->id,
             'document_type' => $docType,
-            'file_url'      => $url,
+            'file_url'      => $path,
             'original_name' => $file->getClientOriginalName(),
             'expiry_date'   => $expiryDate,
             'uploaded_by'   => $uploader->id,
             'uploaded_at'   => now(),
         ]);
+    }
+
+    public function deleteDocument(TenantDocument $document): void
+    {
+        $old = $document->toArray();
+
+        // Remove the underlying file using the raw stored key (not the signed URL).
+        \App\Support\FileStorage::delete($document->getRawOriginal('file_url'));
+
+        $document->delete();
+
+        app(AuditService::class)->log('deleted', TenantDocument::class, $old['id'], $old, null);
     }
 
     public function generatePortalCredentials(Tenant $tenant): array

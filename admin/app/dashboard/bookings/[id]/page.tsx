@@ -40,7 +40,8 @@ interface Booking {
   recurrence_rule: { frequency: string; days: string[]; end_date: string } | null;
   recurrence_group_id: number | null;
   product: { id: number; name: string; floor: { name: string } | null } | null;
-  catering_package: { name: string } | null;
+  catering_package: { name: string; description: string | null; items?: { id: number; service_name: string; description: string | null }[] } | null;
+  extra_services: any[] | null;
   dj_requested: boolean;
   cameraman_requested: boolean;
   status_logs: StatusLog[];
@@ -95,6 +96,12 @@ export default function BookingDetailPage() {
 
   useEffect(() => { fetchBooking(); }, [id]);
 
+  const handlePdf = async () => {
+    const res = await bookingsAPI.pdf(parseInt(id));
+    const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+    window.open(url, '_blank');
+  };
+
   const handleCancelSeries = async (scope: 'single' | 'future' | 'all') => {
     if (!booking) return;
     const labels = {
@@ -145,9 +152,15 @@ export default function BookingDetailPage() {
           <button onClick={() => router.back()} className="text-sm text-gray-500 hover:text-[#1B2D4F] mb-2">← Back</button>
           <h1 className="text-3xl font-bold text-[#1B2D4F]">{booking.booking_code}</h1>
         </div>
-        <span className={`px-3 py-1.5 rounded-lg text-sm font-semibold ${STATUS_STYLES[booking.status]}`}>
-          {STATUS_LABELS[booking.status] ?? booking.status}
-        </span>
+        <div className="flex items-center gap-3">
+          <button onClick={handlePdf}
+            className="border border-[#1B2D4F] text-[#1B2D4F] hover:bg-[#1B2D4F] hover:text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+            📄 Export PDF
+          </button>
+          <span className={`px-3 py-1.5 rounded-lg text-sm font-semibold ${STATUS_STYLES[booking.status]}`}>
+            {STATUS_LABELS[booking.status] ?? booking.status}
+          </span>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -185,6 +198,55 @@ export default function BookingDetailPage() {
               {booking.client_national_id && <div><p className="text-gray-400">National ID</p><p className="font-medium">{booking.client_national_id}</p></div>}
             </div>
           </div>
+
+          {/* Catering & Services */}
+          {(booking.catering_package || booking.dj_requested || booking.cameraman_requested || (booking.extra_services?.length ?? 0) > 0) && (
+            <div className="bg-white rounded-lg shadow p-5">
+              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Catering & Services</h2>
+
+              {booking.catering_package ? (
+                <div className="rounded-lg border border-gray-100 bg-gray-50 p-4">
+                  <div className="flex items-center justify-between">
+                    <p className="font-semibold text-[#1B2D4F]">{booking.catering_package.name} Package</p>
+                    <span className="text-sm font-medium text-gray-600">${booking.catering_price}</span>
+                  </div>
+                  {booking.catering_package.description && (
+                    <p className="text-xs text-gray-500 mt-1">{booking.catering_package.description}</p>
+                  )}
+                  {(booking.catering_package.items?.length ?? 0) > 0 ? (
+                    <div className="mt-3">
+                      <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Included</p>
+                      <ul className="space-y-1">
+                        {booking.catering_package.items!.map(it => (
+                          <li key={it.id} className="text-sm text-gray-700 flex gap-2">
+                            <span className="text-[#C9A052]">✓</span>
+                            <span><span className="font-medium">{it.service_name}</span>{it.description ? ` — ${it.description}` : ''}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-gray-400 italic mt-2">No itemised inclusions recorded for this package.</p>
+                  )}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-400 italic">No catering package selected.</p>
+              )}
+
+              {/* Add-on services */}
+              {(booking.dj_requested || booking.cameraman_requested || (booking.extra_services?.length ?? 0) > 0) && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {booking.dj_requested && <span className="text-xs bg-[#1B2D4F] text-white px-3 py-1 rounded-full">🎧 DJ Service</span>}
+                  {booking.cameraman_requested && <span className="text-xs bg-[#1B2D4F] text-white px-3 py-1 rounded-full">🎥 Cameraman</span>}
+                  {booking.extra_services?.map((ex: any, i: number) => (
+                    <span key={i} className="text-xs bg-[#1B2D4F] text-white px-3 py-1 rounded-full">
+                      {typeof ex === 'string' ? ex : (ex?.name ?? 'Extra service')}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Add-ons & Pricing */}
           <div className="bg-white rounded-lg shadow p-5">

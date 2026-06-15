@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Haleelo Tower — Platform Overview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy:#1B2D4F; --navy-2:#0f1d33; --navy-3:#24385f;
+    --gold:#C9A052; --gold-2:#e0bd77; --gold-soft:rgba(201,160,82,.14);
+    --ink:#0e1726; --paper:#f7f8fb; --muted:#8aa0c2; --line:rgba(255,255,255,.10);
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;overflow:hidden;background:var(--navy-2);font-family:'Poppins',system-ui,sans-serif;color:#fff}
+  .deck{position:fixed;inset:0}
+
+  /* progress + chrome */
+  .progress{position:fixed;top:0;left:0;height:4px;background:linear-gradient(90deg,var(--gold),var(--gold-2));width:0;z-index:50;transition:width .5s cubic-bezier(.4,0,.2,1);box-shadow:0 0 12px rgba(201,160,82,.6)}
+  .brandmark{position:fixed;top:26px;left:36px;z-index:40;font-weight:800;letter-spacing:.5px;font-size:15px}
+  .brandmark b{color:var(--gold)}
+  .confidential{position:fixed;top:30px;right:36px;z-index:40;font-size:10px;letter-spacing:3px;color:var(--muted);text-transform:uppercase}
+
+  .controls{position:fixed;bottom:22px;right:34px;z-index:40;display:flex;align-items:center;gap:14px}
+  .counter{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .counter b{color:#fff;font-weight:600}
+  .navbtn{width:40px;height:40px;border-radius:50%;border:1px solid var(--line);background:rgba(255,255,255,.04);color:#fff;font-size:16px;cursor:pointer;transition:.2s;display:grid;place-items:center}
+  .navbtn:hover{background:var(--gold);border-color:var(--gold);color:var(--navy);transform:translateY(-2px)}
+  .dots{position:fixed;bottom:26px;left:50%;transform:translateX(-50%);z-index:40;display:flex;gap:9px}
+  .dot{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.22);cursor:pointer;transition:.3s}
+  .dot.active{background:var(--gold);width:22px;border-radius:4px}
+  .hint{position:fixed;bottom:24px;left:34px;z-index:40;font-size:11px;color:var(--muted)}
+  .hint kbd{background:rgba(255,255,255,.08);border:1px solid var(--line);border-radius:4px;padding:1px 6px;font-family:inherit;font-size:10px}
+
+  /* slides */
+  .slide{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;padding:7vh 8vw;opacity:0;visibility:hidden;transform:translateY(28px) scale(.99);transition:opacity .55s ease,transform .55s cubic-bezier(.2,.7,.2,1),visibility .55s;overflow:hidden}
+  .slide.active{opacity:1;visibility:visible;transform:none}
+  .slide.past{transform:translateY(-28px) scale(.99)}
+  .slide::before{content:"";position:absolute;inset:0;background:
+    radial-gradient(1100px 600px at 85% -10%,rgba(201,160,82,.10),transparent 60%),
+    radial-gradient(900px 700px at -10% 110%,rgba(79,134,201,.10),transparent 55%),
+    linear-gradient(160deg,var(--navy) 0%,var(--navy-2) 100%);z-index:-1}
+
+  /* staggered entrance */
+  .slide.active .reveal{animation:rise .6s both}
+  .slide.active .reveal:nth-child(2){animation-delay:.06s}
+  .slide.active .reveal:nth-child(3){animation-delay:.12s}
+  .slide.active .reveal:nth-child(4){animation-delay:.18s}
+  .slide.active .reveal:nth-child(5){animation-delay:.24s}
+  @keyframes rise{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:none}}
+  .grid.active-cards .card{animation:rise .5s both}
+  .grid .card:nth-child(2){animation-delay:.05s}.grid .card:nth-child(3){animation-delay:.1s}
+  .grid .card:nth-child(4){animation-delay:.15s}.grid .card:nth-child(5){animation-delay:.2s}
+  .grid .card:nth-child(6){animation-delay:.25s}
+
+  .eyebrow{display:inline-flex;align-items:center;gap:9px;font-size:12px;letter-spacing:3px;text-transform:uppercase;color:var(--gold);font-weight:600;margin-bottom:18px}
+  .eyebrow::before{content:"";width:28px;height:2px;background:var(--gold)}
+  h1{font-size:clamp(34px,5.4vw,72px);font-weight:800;line-height:1.04;letter-spacing:-1px}
+  h2{font-size:clamp(28px,3.6vw,46px);font-weight:700;line-height:1.1;letter-spacing:-.5px;margin-bottom:8px}
+  .lead{font-size:clamp(15px,1.5vw,20px);color:#c8d4e8;max-width:60ch;line-height:1.6;margin-top:14px}
+  .gold{color:var(--gold)}
+  .muted{color:var(--muted)}
+
+  /* title slide */
+  .title-wrap{text-align:left}
+  .logo{font-size:clamp(46px,8vw,108px);font-weight:800;letter-spacing:-2px;line-height:1}
+  .logo .t{color:#fff}.logo .h{color:var(--gold)}
+  .title-sub{font-size:clamp(16px,2vw,24px);color:#c8d4e8;margin-top:18px;font-weight:300;letter-spacing:.5px}
+  .title-tag{margin-top:30px;display:inline-block;padding:9px 18px;border:1px solid var(--line);border-radius:30px;font-size:13px;color:var(--gold);background:var(--gold-soft)}
+  .title-foot{position:absolute;bottom:8vh;left:8vw;font-size:12px;color:var(--muted);letter-spacing:1px}
+
+  /* cards */
+  .grid{display:grid;gap:18px;margin-top:30px}
+  .g3{grid-template-columns:repeat(3,1fr)} .g4{grid-template-columns:repeat(4,1fr)} .g2{grid-template-columns:repeat(2,1fr)}
+  .card{background:rgba(255,255,255,.045);border:1px solid var(--line);border-radius:16px;padding:22px;transition:.3s;backdrop-filter:blur(4px)}
+  .card:hover{border-color:rgba(201,160,82,.5);background:rgba(201,160,82,.06);transform:translateY(-4px)}
+  .card .ic{font-size:26px;margin-bottom:12px;display:block}
+  .card h3{font-size:16px;font-weight:600;margin-bottom:6px}
+  .card p{font-size:13px;color:var(--muted);line-height:1.5}
+
+  .pillars{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;margin-top:36px}
+  .pillar{position:relative;background:linear-gradient(160deg,rgba(255,255,255,.06),rgba(255,255,255,.02));border:1px solid var(--line);border-radius:18px;padding:28px 24px;overflow:hidden}
+  .pillar .ph{font-size:13px;letter-spacing:2px;text-transform:uppercase;color:var(--gold);font-weight:600}
+  .pillar .pn{font-size:46px;font-weight:800;color:rgba(255,255,255,.10);position:absolute;top:8px;right:18px}
+  .pillar h3{font-size:21px;margin:8px 0 12px;font-weight:700}
+  .pillar ul{list-style:none;display:flex;flex-direction:column;gap:8px}
+  .pillar li{font-size:13.5px;color:#c2cee2;padding-left:20px;position:relative}
+  .pillar li::before{content:"✓";position:absolute;left:0;color:var(--gold);font-weight:700}
+  .pillar .badge{position:absolute;bottom:18px;right:20px;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:#7ee0a8;background:rgba(80,200,140,.12);border:1px solid rgba(80,200,140,.3);padding:4px 10px;border-radius:20px}
+
+  /* stats */
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:24px;margin-top:36px}
+  .stat{text-align:left}
+  .stat .num{font-size:clamp(34px,4.5vw,58px);font-weight:800;color:var(--gold);line-height:1}
+  .stat .lbl{font-size:13px;color:#c2cee2;margin-top:8px;line-height:1.4}
+
+  /* table */
+  .tbl{width:100%;border-collapse:collapse;margin-top:26px;font-size:14px}
+  .tbl th{text-align:left;padding:13px 14px;color:var(--gold);font-weight:600;font-size:12px;letter-spacing:1px;text-transform:uppercase;border-bottom:2px solid rgba(201,160,82,.3)}
+  .tbl th.r,.tbl td.r{text-align:right;font-variant-numeric:tabular-nums}
+  .tbl td{padding:13px 14px;border-bottom:1px solid var(--line);color:#dbe4f2}
+  .tbl td .svc{font-weight:600;color:#fff}
+  .tbl td .note{font-size:11.5px;color:var(--muted)}
+  .tbl tr:hover td{background:rgba(255,255,255,.025)}
+  .tbl tfoot td{border-top:2px solid rgba(201,160,82,.4);border-bottom:none;font-weight:700;color:#fff;font-size:15px;padding-top:16px}
+  .pill{display:inline-block;font-size:11px;padding:3px 9px;border-radius:20px;background:var(--gold-soft);color:var(--gold);border:1px solid rgba(201,160,82,.3)}
+
+  /* roadmap */
+  .road{display:grid;grid-template-columns:repeat(2,1fr);gap:18px;margin-top:28px}
+  .ritem{display:flex;gap:16px;background:rgba(255,255,255,.04);border:1px solid var(--line);border-left:3px solid var(--gold);border-radius:12px;padding:18px 20px}
+  .ritem .ic{font-size:24px}
+  .ritem h3{font-size:15.5px;margin-bottom:4px}
+  .ritem p{font-size:12.5px;color:var(--muted);line-height:1.5}
+  .rtag{display:inline-block;font-size:10px;letter-spacing:1px;text-transform:uppercase;padding:2px 8px;border-radius:12px;margin-top:8px}
+  .rtag.next{background:rgba(80,200,140,.14);color:#7ee0a8;border:1px solid rgba(80,200,140,.3)}
+  .rtag.later{background:rgba(122,150,200,.14);color:#9db5e0;border:1px solid rgba(122,150,200,.3)}
+
+  .two{display:grid;grid-template-columns:1.1fr .9fr;gap:50px;align-items:center}
+  .checklist{list-style:none;display:flex;flex-direction:column;gap:14px;margin-top:24px}
+  .checklist li{display:flex;gap:14px;align-items:flex-start;font-size:15px;color:#dbe4f2;line-height:1.5}
+  .checklist .ci{flex:0 0 28px;height:28px;border-radius:8px;background:var(--gold-soft);color:var(--gold);display:grid;place-items:center;font-size:14px}
+
+  .endwrap{text-align:center;align-items:center}
+  .end-cta{margin-top:30px;display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
+  .chip{padding:11px 22px;border-radius:30px;border:1px solid var(--line);font-size:14px;color:#dbe4f2;background:rgba(255,255,255,.04)}
+  .chip b{color:var(--gold)}
+
+  .disclaimer{margin-top:22px;font-size:11.5px;color:var(--muted);max-width:75ch}
+  @media (max-width:820px){
+    .g3,.g4,.pillars,.stats,.road,.two{grid-template-columns:1fr}
+    .slide{padding:9vh 7vw}
+    .brandmark,.confidential,.hint{display:none}
+  }
+</style>
+</head>
+<body>
+<div class="progress" id="progress"></div>
+<div class="brandmark"><b>HALEELO</b> TOWER</div>
+<div class="confidential">Confidential</div>
+<div class="deck" id="deck">
+
+  <!-- 1 — TITLE -->
+  <section class="slide active">
+    <div class="title-wrap">
+      <div class="eyebrow reveal">Building Management Platform</div>
+      <div class="logo reveal"><span class="h">Haleelo</span> <span class="t">Tower</span></div>
+      <div class="title-sub reveal">A custom-built platform that runs the entire building —<br>bookings, tenants, finance and people — in one place.</div>
+      <div class="title-tag reveal">Phases 1–3 Delivered &nbsp;•&nbsp; Live &amp; Operational</div>
+    </div>
+    <div class="title-foot">Platform Overview &nbsp;·&nbsp; Prepared for the Owner &nbsp;·&nbsp; 2026</div>
+  </section>
+
+  <!-- 2 — WHAT IT IS -->
+  <section class="slide">
+    <div class="eyebrow reveal">The Idea</div>
+    <h2 class="reveal">One platform instead of spreadsheets,<br>paperwork and rented software.</h2>
+    <p class="lead reveal">Haleelo Tower replaces scattered tools and the recurring ODOO subscription with a platform we <span class="gold">own outright</span> — tailored exactly to how the building actually operates, with no per-user fees and full control of the data.</p>
+    <div class="grid g3 active-cards" style="margin-top:34px">
+      <div class="card reveal"><span class="ic">🏢</span><h3>Built for this building</h3><p>Conference halls, offices, educational spaces, sessions and catering — modelled the way Haleelo Tower really works.</p></div>
+      <div class="card reveal"><span class="ic">🔐</span><h3>We own it</h3><p>No monthly software licence, no per-seat pricing, no vendor lock-in. The code and data are ours.</p></div>
+      <div class="card reveal"><span class="ic">📈</span><h3>Grows with us</h3><p>New capabilities — tenant portal, public website, online payments — slot straight in over time.</p></div>
+    </div>
+  </section>
+
+  <!-- 3 — THREE PHASES OVERVIEW -->
+  <section class="slide">
+    <div class="eyebrow reveal">What's Been Delivered</div>
+    <h2 class="reveal">Three phases, fully built and running.</h2>
+    <div class="pillars">
+      <div class="pillar reveal"><span class="pn">01</span><div class="ph">Phase 1</div><h3>Foundation &amp; Security</h3>
+        <ul><li>Staff accounts &amp; 4 roles</li><li>Two-factor login (WhatsApp)</li><li>Full audit trail</li><li>Central settings</li></ul><span class="badge">● Live</span></div>
+      <div class="pillar reveal"><span class="pn">02</span><div class="ph">Phase 2</div><h3>Bookings &amp; Tenancy</h3>
+        <ul><li>Spaces &amp; catering packages</li><li>Booking approval workflow</li><li>Visual calendar</li><li>Tenants &amp; leases</li></ul><span class="badge">● Live</span></div>
+      <div class="pillar reveal"><span class="pn">03</span><div class="ph">Phase 3</div><h3>Finance &amp; People</h3>
+        <ul><li>Double-entry accounting</li><li>Invoices &amp; payments</li><li>Vendors, expenses, electricity</li><li>HR &amp; payroll</li></ul><span class="badge">● Live</span></div>
+    </div>
+  </section>
+
+  <!-- 4 — PHASE 1 -->
+  <section class="slide">
+    <div class="eyebrow reveal">Phase 1 · Foundation</div>
+    <h2 class="reveal">Secure access, clear accountability.</h2>
+    <p class="lead reveal">Every staff member gets exactly the access their job needs — and every action is recorded.</p>
+    <div class="grid g4 active-cards" style="margin-top:30px">
+      <div class="card reveal"><span class="ic">👥</span><h3>4 Staff Roles</h3><p>Super Admin, Admin, Operations and Finance — each sees only what's relevant.</p></div>
+      <div class="card reveal"><span class="ic">📱</span><h3>2-Factor Login</h3><p>A one-time code sent over WhatsApp protects every login.</p></div>
+      <div class="card reveal"><span class="ic">📋</span><h3>Audit Trail</h3><p>Who did what, and when — every change is logged and searchable.</p></div>
+      <div class="card reveal"><span class="ic">⚙️</span><h3>Central Settings</h3><p>Rates, sessions, working hours and branding configured in one place.</p></div>
+    </div>
+  </section>
+
+  <!-- 5 — PHASE 2 -->
+  <section class="slide">
+    <div class="eyebrow reveal">Phase 2 · Bookings &amp; Tenancy</div>
+    <h2 class="reveal">From enquiry to confirmed booking — controlled.</h2>
+    <div class="grid g3 active-cards" style="margin-top:28px">
+      <div class="card reveal"><span class="ic">📅</span><h3>Smart Bookings</h3><p>Halls and spaces booked by session, with add-ons (catering, DJ, cameraman) and recurring events.</p></div>
+      <div class="card reveal"><span class="ic">✅</span><h3>Approval Workflow</h3><p>Bookings flow through admin and finance review before they're confirmed — no double-bookings, no surprises.</p></div>
+      <div class="card reveal"><span class="ic">🗓️</span><h3>Visual Calendar</h3><p>A clear month view of everything happening in the building at a glance.</p></div>
+      <div class="card reveal"><span class="ic">🏬</span><h3>Tenant Records</h3><p>Companies, contacts and KYC documents kept organised and secure.</p></div>
+      <div class="card reveal"><span class="ic">📄</span><h3>Leases</h3><p>Monthly &amp; semester leases with rent, deposits and expiry tracking.</p></div>
+      <div class="card reveal"><span class="ic">🍽️</span><h3>Catering Packages</h3><p>Reusable packages with itemised inclusions, attached to bookings.</p></div>
+    </div>
+  </section>
+
+  <!-- 6 — PHASE 3 -->
+  <section class="slide">
+    <div class="eyebrow reveal">Phase 3 · Finance &amp; People</div>
+    <h2 class="reveal">Proper books — automatically balanced.</h2>
+    <p class="lead reveal">Every invoice, payment and expense posts to a real double-entry ledger. The books always balance.</p>
+    <div class="grid g4 active-cards" style="margin-top:28px">
+      <div class="card reveal"><span class="ic">📒</span><h3>Accounting Engine</h3><p>Chart of accounts, journals and a trial balance that's always in balance.</p></div>
+      <div class="card reveal"><span class="ic">🧾</span><h3>Invoicing &amp; Payments</h3><p>Booking, rent &amp; manual invoices, with receipts and PDF vouchers.</p></div>
+      <div class="card reveal"><span class="ic">🚚</span><h3>Vendors &amp; Expenses</h3><p>Purchase orders, vendor bills, expenses and electricity billing.</p></div>
+      <div class="card reveal"><span class="ic">💸</span><h3>HR &amp; Payroll</h3><p>Employees, attendance, leave and monthly payroll with payslips.</p></div>
+    </div>
+  </section>
+
+  <!-- 7 — RECENT ENHANCEMENTS -->
+  <section class="slide">
+    <div class="eyebrow reveal">Latest Enhancements</div>
+    <h2 class="reveal">Polished, fast, and secure.</h2>
+    <div class="grid g3 active-cards" style="margin-top:28px">
+      <div class="card reveal"><span class="ic">📊</span><h3>Role-Based Dashboards</h3><p>Finance and Operations each get a focused home screen with the numbers that matter to them.</p></div>
+      <div class="card reveal"><span class="ic">🔔</span><h3>Approvals Inbox</h3><p>A live notification bell + inbox surfaces everything that needs attention.</p></div>
+      <div class="card reveal"><span class="ic">⌘</span><h3>Instant Search</h3><p>A command palette (⌘K) jumps to any booking, invoice, tenant or employee in seconds.</p></div>
+      <div class="card reveal"><span class="ic">☁️</span><h3>Secure Document Vault</h3><p>All files stored privately on Amazon S3 and served through expiring, signed links.</p></div>
+      <div class="card reveal"><span class="ic">📄</span><h3>PDF Everything</h3><p>Invoices, payslips, vouchers and booking confirmations export as branded PDFs.</p></div>
+      <div class="card reveal"><span class="ic">🎨</span><h3>Your Branding</h3><p>Building logo flows through the dashboard, documents and browser tab.</p></div>
+    </div>
+  </section>
+
+  <!-- 8 — EFFECTIVENESS / BY THE NUMBERS -->
+  <section class="slide">
+    <div class="eyebrow reveal">Effectiveness</div>
+    <h2 class="reveal">What it does for the business.</h2>
+    <div class="stats">
+      <div class="stat reveal"><div class="num">3</div><div class="lbl">Phases delivered &amp; live</div></div>
+      <div class="stat reveal"><div class="num">100%</div><div class="lbl">Double-entry — books always balance</div></div>
+      <div class="stat reveal"><div class="num">14+</div><div class="lbl">Financial &amp; operational reports</div></div>
+      <div class="stat reveal"><div class="num">$0</div><div class="lbl">Per-user software licence fees</div></div>
+    </div>
+    <div class="grid g3 active-cards" style="margin-top:34px">
+      <div class="card reveal"><span class="ic">⏱️</span><h3>Less manual work</h3><p>Bookings, invoices and journals are created automatically — fewer spreadsheets, fewer errors.</p></div>
+      <div class="card reveal"><span class="ic">👁️</span><h3>Real-time visibility</h3><p>Cash position, receivables and occupancy are visible the moment they change.</p></div>
+      <div class="card reveal"><span class="ic">🛡️</span><h3>Control &amp; trust</h3><p>Approvals, permissions and a full audit trail keep money and data accountable.</p></div>
+    </div>
+  </section>
+
+  <!-- 9 — RUNNING COSTS -->
+  <section class="slide">
+    <div class="eyebrow reveal">Running Costs · Monthly (USD)</div>
+    <h2 class="reveal">What it costs to keep online.</h2>
+    <table class="tbl reveal">
+      <thead><tr><th>Service</th><th>Purpose</th><th class="r">Low</th><th class="r">Expected</th><th class="r">High</th></tr></thead>
+      <tbody>
+        <tr><td><span class="svc">VPS Hosting</span><div class="note">Hostinger KVM (server)</div></td><td>Runs the API, dashboard &amp; database</td><td class="r">$7</td><td class="r">$12</td><td class="r">$25</td></tr>
+        <tr><td><span class="svc">Amazon S3</span><div class="note">eu-central-1 (Frankfurt)</div></td><td>Secure file &amp; document storage</td><td class="r">$1</td><td class="r">$3</td><td class="r">$10</td></tr>
+        <tr><td><span class="svc">WhatsApp API</span><div class="note">via Twilio</div></td><td>2FA codes &amp; tenant notifications</td><td class="r">$3</td><td class="r">$10</td><td class="r">$30</td></tr>
+        <tr><td><span class="svc">Email API</span><div class="note">Resend</div></td><td>Invoices, alerts &amp; password resets</td><td class="r">$0</td><td class="r">$0</td><td class="r">$20</td></tr>
+        <tr><td><span class="svc">Domain</span><div class="note">halelotower.so (billed yearly)</div></td><td>Web address</td><td class="r">$2</td><td class="r">$3</td><td class="r">$8</td></tr>
+        <tr><td><span class="svc">SSL Certificate</span><div class="note">Let's Encrypt</div></td><td>HTTPS security</td><td class="r">Free</td><td class="r">Free</td><td class="r">Free</td></tr>
+        <tr><td><span class="svc">Backups / Monitoring</span><div class="note">VPS snapshots (optional)</div></td><td>Disaster recovery</td><td class="r">$0</td><td class="r">$2</td><td class="r">$5</td></tr>
+      </tbody>
+      <tfoot><tr><td colspan="2">Estimated total <span class="pill">per month</span></td><td class="r">≈ $13</td><td class="r">≈ $30</td><td class="r">≈ $98</td></tr></tfoot>
+    </table>
+    <p class="disclaimer reveal">Figures are good-faith estimates and depend on usage volume (messages sent, files stored, traffic). Verify current vendor pricing before budgeting. WhatsApp cost is the biggest variable — it scales with the number of notifications and login codes.</p>
+  </section>
+
+  <!-- 10 — COST SUMMARY -->
+  <section class="slide">
+    <div class="eyebrow reveal">Total Cost of Ownership</div>
+    <h2 class="reveal">Lean to run. No licence fees.</h2>
+    <div class="stats" style="margin-top:30px">
+      <div class="stat reveal"><div class="num">≈$30</div><div class="lbl">Expected monthly running cost</div></div>
+      <div class="stat reveal"><div class="num">≈$360</div><div class="lbl">Expected per year</div></div>
+      <div class="stat reveal"><div class="num">$13–98</div><div class="lbl">Monthly range (low → high usage)</div></div>
+      <div class="stat reveal"><div class="num">$0</div><div class="lbl">Ongoing software licences</div></div>
+    </div>
+    <div class="grid g2 active-cards" style="margin-top:34px">
+      <div class="card reveal"><span class="ic">💡</span><h3>Where the money goes</h3><p>The server and messaging dominate. Email, SSL and storage are negligible at our scale.</p></div>
+      <div class="card reveal"><span class="ic">📉</span><h3>How to keep it low</h3><p>Use email for routine alerts and reserve WhatsApp for logins &amp; urgent notices; keep Resend on its free tier.</p></div>
+    </div>
+  </section>
+
+  <!-- 11 — ROADMAP -->
+  <section class="slide">
+    <div class="eyebrow reveal">What's Next</div>
+    <h2 class="reveal">The roadmap ahead.</h2>
+    <div class="road">
+      <div class="ritem reveal"><span class="ic">🌐</span><div><h3>Public Website</h3><p>A marketing site at halelotower.so — showcase spaces, capacities and enquiries.</p><span class="rtag next">Next</span></div></div>
+      <div class="ritem reveal"><span class="ic">🔑</span><div><h3>Tenant Portal</h3><p>Tenants log in to view invoices, pay, see leases and submit requests.</p><span class="rtag next">Next</span></div></div>
+      <div class="ritem reveal"><span class="ic">💳</span><div><h3>Online Payments</h3><p>Pay invoices directly via ZAAD / eDahab / bank — auto-reconciled to the ledger.</p><span class="rtag later">Later</span></div></div>
+      <div class="ritem reveal"><span class="ic">🛠️</span><div><h3>Maintenance Requests</h3><p>Log, assign and resolve building maintenance with full tracking.</p><span class="rtag later">Later</span></div></div>
+      <div class="ritem reveal"><span class="ic">📢</span><div><h3>Announcements</h3><p>Broadcast notices to tenants by WhatsApp &amp; email from one screen.</p><span class="rtag later">Later</span></div></div>
+      <div class="ritem reveal"><span class="ic">🏦</span><div><h3>Bank Reconciliation &amp; Penalties</h3><p>Match bank statements automatically; apply late-payment penalties.</p><span class="rtag later">Later</span></div></div>
+    </div>
+  </section>
+
+  <!-- 12 — WHY IT MATTERS -->
+  <section class="slide">
+    <div class="two">
+      <div>
+        <div class="eyebrow reveal">In Summary</div>
+        <h2 class="reveal">A platform that pays for itself.</h2>
+        <ul class="checklist">
+          <li class="reveal"><span class="ci">✓</span><span>Three phases delivered and running the building today.</span></li>
+          <li class="reveal"><span class="ci">✓</span><span>Owned outright — no per-user or licence fees.</span></li>
+          <li class="reveal"><span class="ci">✓</span><span>Bank-grade books, security and a complete audit trail.</span></li>
+          <li class="reveal"><span class="ci">✓</span><span>Runs for roughly <span class="gold">$30/month</span> at expected usage.</span></li>
+          <li class="reveal"><span class="ci">✓</span><span>A clear roadmap to portal, website and online payments.</span></li>
+        </ul>
+      </div>
+      <div class="card reveal" style="padding:32px">
+        <span class="ic" style="font-size:34px">🏆</span>
+        <h3 style="font-size:20px;margin-bottom:14px">The bottom line</h3>
+        <p style="font-size:15px;color:#c8d4e8;line-height:1.7">One system now runs bookings, tenants, finance and people — replacing rented software and manual spreadsheets, with control and data kept in-house, at a fraction of the cost.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 13 — CLOSING -->
+  <section class="slide endwrap">
+    <div class="logo reveal" style="font-size:clamp(40px,7vw,92px)"><span class="h">Haleelo</span> <span class="t">Tower</span></div>
+    <p class="lead reveal" style="margin:18px auto 0;text-align:center">Thank you. The foundation is built and live —<br>let's decide what we launch next.</p>
+    <div class="end-cta reveal">
+      <span class="chip"><b>Decision:</b> approve the next phase</span>
+      <span class="chip"><b>Discuss:</b> portal vs public website first</span>
+      <span class="chip"><b>Confirm:</b> monthly hosting budget</span>
+    </div>
+  </section>
+
+</div>
+
+<!-- chrome -->
+<div class="dots" id="dots"></div>
+<div class="controls">
+  <span class="counter"><b id="cur">01</b> / <span id="tot">13</span></span>
+  <button class="navbtn" id="prev" aria-label="Previous">‹</button>
+  <button class="navbtn" id="next" aria-label="Next">›</button>
+</div>
+<div class="hint"><kbd>←</kbd> <kbd>→</kbd> navigate &nbsp;·&nbsp; <kbd>F</kbd> fullscreen</div>
+
+<script>
+  const slides=[...document.querySelectorAll('.slide')];
+  const total=slides.length, dotsWrap=document.getElementById('dots');
+  let i=0;
+  slides.forEach((_,n)=>{const d=document.createElement('div');d.className='dot'+(n===0?' active':'');d.onclick=()=>go(n);dotsWrap.appendChild(d);});
+  const dots=[...document.querySelectorAll('.dot')];
+  document.getElementById('tot').textContent=String(total).padStart(2,'0');
+
+  function go(n){
+    n=Math.max(0,Math.min(total-1,n));
+    slides.forEach((s,k)=>{s.classList.remove('active','past');if(k<n)s.classList.add('past');});
+    slides[n].classList.add('active');
+    dots.forEach((d,k)=>d.classList.toggle('active',k===n));
+    document.getElementById('cur').textContent=String(n+1).padStart(2,'0');
+    document.getElementById('progress').style.width=((n)/(total-1)*100)+'%';
+    i=n;
+  }
+  document.getElementById('next').onclick=()=>go(i+1);
+  document.getElementById('prev').onclick=()=>go(i-1);
+  document.addEventListener('keydown',e=>{
+    if(['ArrowRight','PageDown',' '].includes(e.key)){e.preventDefault();go(i+1);}
+    else if(['ArrowLeft','PageUp'].includes(e.key)){e.preventDefault();go(i-1);}
+    else if(e.key==='Home')go(0); else if(e.key==='End')go(total-1);
+    else if(e.key.toLowerCase()==='f'){if(!document.fullscreenElement)document.documentElement.requestFullscreen();else document.exitFullscreen();}
+  });
+  // click left/right thirds to navigate
+  document.getElementById('deck').addEventListener('click',e=>{
+    if(e.target.closest('a,button,.dot'))return;
+    const x=e.clientX/window.innerWidth;
+    if(x>0.66)go(i+1); else if(x<0.34)go(i-1);
+  });
+  // touch swipe
+  let sx=0;
+  addEventListener('touchstart',e=>sx=e.touches[0].clientX,{passive:true});
+  addEventListener('touchend',e=>{const dx=e.changedTouches[0].clientX-sx;if(Math.abs(dx)>50)go(i+(dx<0?1:-1));},{passive:true});
+  go(0);
+</script>
+</body>
+</html>

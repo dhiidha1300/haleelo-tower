@@ -1,12 +1,12 @@
 # HALEELO TOWER
 # Platform Implementation Plan
-Version 3.1  |  June 2026
+Version 3.2  |  June 2026
 Confidential — Build Specification for Claude Code CLI
-*(v3.1 adds Section 19 — Admin Panel Enhancements and Section 20 — Deployment Runbook on top of the completed v3.0 Phase 1–3 build.)*
+*(v3.2 adds §19.4 — Operating Account Creation (E7). v3.1 added Section 19 — Admin Panel Enhancements and Section 20 — Deployment Runbook, on top of the completed v3.0 Phase 1–3 build.)*
 
 |  |  |
 | --- | --- |
-| Client | Haleelo Tower — Mogadishu, Somalia |
+| Client | Haleelo Tower — Hargeisa, Somaliland |
 | Platform | Custom-built Web Platform (replaces ODOO) |
 | Discovery Rounds | 3 rounds — 75 confirmed requirements |
 | Finance Officer Review | June 2026 |
@@ -1443,6 +1443,19 @@ Tab visibility is role-aware; cards use fixed heights and denser spacing so no t
 | E4 | Profile photo upload | Users | Pilot |
 | E5 | Tenant document expiry date + expiry alerts | Tenants | Pilot |
 | E6 | Tabbed dashboard (Overview / Finance / Operations) | Dashboard | Pilot |
+| E7 | Create operating account (auto-creates linked Chart-of-Accounts code) | Accounting | Pilot |
+
+## 19.4 Operating Account Creation (E7)
+
+Phase 3 seeded a fixed set of operating accounts (Petty Cash, Edahab/ZAAD lines, Darasalam Bank). This enhancement lets **Super Admin & Admin** add new operating accounts at runtime from **Accounting → Operating Accounts → “+ New Account”**.
+
+- **Inputs:** name, type (`cash` / `bank` / `mobile_money`), optional account identifier, optional notes.
+- **Automatic Chart-of-Accounts link:** on creation the system creates a matching **asset** COA entry and links it, so the account immediately works with journals, transfers and the trial balance. Codes are auto-assigned from the type’s range (flat, matching the seed):
+  - Cash → `1001–1009`
+  - Mobile Money → `1010–1019`
+  - Bank → `1020–1029`
+- **Opening balance:** none — accounts start at `$0.00`; balances accrue from real transactions only (keeps the ledger balanced with no opening journal).
+- **Access:** restricted to `super_admin` and `admin` (route role middleware); the created COA code is **non-system** so it remains editable/removable. Creation is written to the audit log.
 
 # SECTION 20 — ADMIN PANEL DEPLOYMENT RUNBOOK (VPS)
 Production deployment of the admin dashboard (`admin.halelotower.so`) and the Laravel API (`api.halelotower.so`) onto the client VPS (Ubuntu 22.04). This is the concrete, step-by-step procedure referenced in Section 12.

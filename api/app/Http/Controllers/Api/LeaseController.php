@@ -98,11 +98,11 @@ class LeaseController extends Controller
             'doc_type'  => 'required|in:contract,external_contract',
         ]);
 
-        $path  = $request->file('document')->store("leases/{$lease->id}/docs", 'public');
-        $url   = Storage::disk('public')->url($path);
+        $path  = \App\Support\FileStorage::put($request->file('document'), "leases/{$lease->id}/docs");
+        $url   = \App\Support\FileStorage::url($path);
         $field = $request->input('doc_type') === 'external_contract' ? 'external_contract_url' : 'contract_file_url';
 
-        $lease->update([$field => $url]);
+        $lease->update([$field => $path]);
 
         return response()->json([
             'message' => 'Document uploaded.',

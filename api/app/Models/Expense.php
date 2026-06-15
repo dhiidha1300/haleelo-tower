@@ -21,6 +21,11 @@ class Expense extends Model
         'expense_date' => 'date',
     ];
 
+    public function getReceiptFileUrlAttribute($value): ?string
+    {
+        return \App\Support\FileStorage::url($value);
+    }
+
     public function expenseAccount(): BelongsTo
     {
         return $this->belongsTo(ChartOfAccount::class, 'expense_account_id');

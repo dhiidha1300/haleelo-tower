@@ -14,8 +14,10 @@ use League\CommonMark\CommonMarkConverter;
 use Dompdf\Dompdf;
 use Dompdf\Options;
 
-$mdPath  = 'D:/haleelo-tower/Planning/IMPLEMENTATION_PLAN.md';
-$pdfPath = 'D:/haleelo-tower/Planning/Haleelo Tower — Platform Implementation Plan v3.0.pdf';
+$mdPath   = 'D:/haleelo-tower/Planning/IMPLEMENTATION_PLAN.md';
+// Latest versioned file + the v3.0-named alias kept current for the CLAUDE.md reference.
+$pdfPath  = 'D:/haleelo-tower/Planning/Haleelo Tower — Platform Implementation Plan v3.2.pdf';
+$aliasPdf = 'D:/haleelo-tower/Planning/Haleelo Tower — Platform Implementation Plan v3.0.pdf';
 
 $markdown = file_get_contents($mdPath);
 
@@ -55,7 +57,10 @@ $dompdf->render();
 $canvas = $dompdf->getCanvas();
 $canvas->page_text(520, 810, 'Page {PAGE_NUM} / {PAGE_COUNT}', null, 8, [0.5, 0.5, 0.5]);
 
-file_put_contents($pdfPath, $dompdf->output());
+$pdf = $dompdf->output();
+file_put_contents($pdfPath, $pdf);
+file_put_contents($aliasPdf, $pdf);
 
-echo "PDF regenerated: {$pdfPath}\n";
-echo 'Size: ' . round(filesize($pdfPath) / 1024) . " KB\n";
+echo "PDF regenerated (latest): {$pdfPath}\n";
+echo "Alias updated: {$aliasPdf}\n";
+echo 'Size: ' . round(strlen($pdf) / 1024) . " KB\n";

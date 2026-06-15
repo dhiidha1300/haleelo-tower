@@ -21,6 +21,11 @@ class Employee extends Model
         'start_date'  => 'date',
     ];
 
+    public function getContractFileUrlAttribute($value): ?string
+    {
+        return \App\Support\FileStorage::url($value);
+    }
+
     public function attendanceLogs(): HasMany
     {
         return $this->hasMany(AttendanceLog::class);

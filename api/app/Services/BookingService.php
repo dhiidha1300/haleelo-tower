@@ -201,7 +201,7 @@ class BookingService
 
     public function getBookingWithDetails(Booking $booking): array
     {
-        $booking->load(['product.floor', 'statusLogs.changedBy', 'cateringPackage', 'createdBy']);
+        $booking->load(['product.floor', 'statusLogs.changedBy', 'cateringPackage.items', 'createdBy']);
 
         // Per-event P&L: revenue from the linked invoice − expenses linked to this booking
         $invoice = \App\Models\Invoice::where('booking_id', $booking->id)->whereNull('deleted_at')->first();
@@ -222,6 +222,23 @@ class BookingService
                 'expenses'      => $expenses,
             ],
         ]);
+    }
+
+    /** Client-facing booking confirmation PDF (no internal pricing breakdown). */
+    public function generatePdf(Booking $booking): string
+    {
+        $booking->load(['product.floor', 'cateringPackage.items']);
+
+        $building = [
+            'name'    => SystemSetting::get('building_name', 'Haleelo Tower'),
+            'address' => SystemSetting::get('address', 'Mogadishu, Somalia'),
+            'phone'   => SystemSetting::get('contact_phone', ''),
+            'email'   => SystemSetting::get('contact_email', ''),
+        ];
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdfs.booking', compact('booking', 'building'));
+
+        return $pdf->output();
     }
 
     private function resolveSessionTimes(array $data): array

@@ -129,28 +129,41 @@ class ProductController extends Controller
             'photo' => 'required|image|max:5120',
         ]);
 
-        $path = $request->file('photo')->store("spaces/{$product->id}/photos", 'public');
-        $url  = Storage::disk('public')->url($path);
+        $key = \App\Support\FileStorage::put($request->file('photo'), "spaces/{$product->id}/photos");
 
-        $photos = $product->photos ?? [];
-        $photos[] = $url;
-        $product->update(['photos' => $photos]);
+        // photos column holds raw object keys; read the raw (un-accessored) value.
+        $keys = json_decode($product->getRawOriginal('photos') ?? '[]', true) ?: [];
+        $keys[] = $key;
+        $product->update(['photos' => $keys]);
 
-        return response()->json(['photo_url' => $url, 'photos' => $photos]);
+        return response()->json([
+            'photo_url' => \App\Support\FileStorage::url($key),
+            'photos'    => $product->fresh()->photos, // accessor → signed URLs
+        ]);
     }
 
     public function deletePhoto(Request $request, Space $product): JsonResponse
     {
         $request->validate(['photo_url' => 'required|string']);
 
-        $photos = collect($product->photos ?? [])
-            ->filter(fn($p) => $p !== $request->input('photo_url'))
-            ->values()
-            ->all();
+        $incoming = $request->input('photo_url');
+        // The frontend sends the (possibly signed) URL it is displaying. Reduce it
+        // to a comparable form so we can match it against the stored object key.
+        $incomingPath = ltrim(parse_url($incoming, PHP_URL_PATH) ?? $incoming, '/');
+        $incomingBase = basename($incomingPath);
 
-        $product->update(['photos' => $photos]);
+        $keys = json_decode($product->getRawOriginal('photos') ?? '[]', true) ?: [];
 
-        return response()->json(['photos' => $photos]);
+        $matches = fn ($k) => $k === $incoming || $k === $incomingPath || basename($k) === $incomingBase;
+
+        foreach (array_filter($keys, $matches) as $m) {
+            \App\Support\FileStorage::delete($m);
+        }
+
+        $remaining = array_values(array_filter($keys, fn ($k) => !$matches($k)));
+        $product->update(['photos' => $remaining]);
+
+        return response()->json(['photos' => $product->fresh()->photos]);
     }
 
     // ─── Product Add-on Services ────────────────────────────────────────────────

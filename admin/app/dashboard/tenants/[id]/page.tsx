@@ -83,6 +83,18 @@ export default function TenantDetailPage() {
     }
   };
 
+  const handleDocDelete = async (docId: number, label: string) => {
+    if (!confirm(`Delete "${label}"? This permanently removes the file and cannot be undone.`)) return;
+    try {
+      await tenantsAPI.deleteDocument(parseInt(id), docId);
+      fetchTenant();
+      setMessage('✓ Document deleted');
+      setTimeout(() => setMessage(''), 3000);
+    } catch (err: any) {
+      setMessage('✗ ' + (err.response?.data?.message || 'Delete failed'));
+    }
+  };
+
   const handleGeneratePortal = async () => {
     if (!confirm('Generate portal credentials for this tenant? This will overwrite any existing password.')) return;
     try {
@@ -259,22 +271,26 @@ export default function TenantDetailPage() {
                 {tenant.documents?.map((d: any) => {
                   const expiringSoon = d.expiry_date && new Date(d.expiry_date) <= new Date(Date.now() + 30 * 86400000);
                   const expired = d.expiry_date && new Date(d.expiry_date) < new Date();
+                  const label = DOC_TYPES.find(t => t.value === d.document_type)?.label ?? d.document_type;
                   return (
-                  <a key={d.id} href={d.file_url} target="_blank" rel="noreferrer"
-                    className="flex items-center justify-between p-2.5 border rounded-lg hover:bg-gray-50 transition-colors">
-                    <div>
-                      <p className="text-sm font-medium text-[#1B2D4F]">
-                        {DOC_TYPES.find(t => t.value === d.document_type)?.label ?? d.document_type}
-                      </p>
-                      <p className="text-xs text-gray-400">{d.original_name}</p>
+                  <div key={d.id} className="flex items-center justify-between p-2.5 border rounded-lg hover:bg-gray-50 transition-colors">
+                    <a href={d.file_url} target="_blank" rel="noreferrer" className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-[#1B2D4F]">{label}</p>
+                      <p className="text-xs text-gray-400 truncate">{d.original_name}</p>
                       {d.expiry_date && (
                         <p className={`text-xs mt-0.5 ${expired ? 'text-red-600 font-medium' : expiringSoon ? 'text-amber-600 font-medium' : 'text-gray-400'}`}>
                           {expired ? '⚠ Expired ' : expiringSoon ? '⏳ Expires ' : 'Expires '}{d.expiry_date}
                         </p>
                       )}
+                    </a>
+                    <div className="flex items-center gap-3 flex-shrink-0 ml-3">
+                      <a href={d.file_url} target="_blank" rel="noreferrer" className="text-xs text-[#C9A052]" title="Download">↓</a>
+                      {(isSuperAdmin || isAdmin) && (
+                        <button onClick={() => handleDocDelete(d.id, label)}
+                          className="text-xs text-red-500 hover:text-red-700" title="Delete document">🗑</button>
+                      )}
                     </div>
-                    <span className="text-xs text-[#C9A052]">↓</span>
-                  </a>
+                  </div>
                   );
                 })}
               </div>

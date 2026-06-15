@@ -454,6 +454,28 @@ class ReportService
         return $months;
     }
 
+    // ── Booking intake trend (last 30 days, daily) ───────────────────────────
+    public function bookingTrend(int $days = 30): array
+    {
+        // Count bookings created per day, keyed by date, then fill gaps with 0
+        // so the line is continuous even on days with no bookings.
+        $start  = now()->subDays($days - 1)->startOfDay();
+        $counts = Booking::where('created_at', '>=', $start)
+            ->get()
+            ->groupBy(fn ($b) => $b->created_at->toDateString())
+            ->map->count();
+
+        $series = [];
+        for ($i = $days - 1; $i >= 0; $i--) {
+            $d = now()->subDays($i);
+            $series[] = [
+                'date'     => $d->format('d M'),
+                'bookings' => (int) ($counts[$d->toDateString()] ?? 0),
+            ];
+        }
+        return $series;
+    }
+
     // ── 16. Revenue by Source (doughnut) ─────────────────────────────────────
     public function revenueBySource(?string $from = null, ?string $to = null): array
     {

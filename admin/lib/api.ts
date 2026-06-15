@@ -1,6 +1,10 @@
 import axios from 'axios';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+// Empty = same-origin: calls go to "/api/…" on whatever host serves the admin,
+// and next.config rewrites proxy them to the Laravel API. This makes local dev
+// and public (tunnelled) access work without rebuilds or CORS. Set an absolute
+// URL only when the API lives on a separate domain (production).
+const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
 const api = axios.create({
   baseURL: API_URL,
@@ -115,6 +119,8 @@ export const cateringAPI = {
 export const dashboardAPI = {
   stats: () => api.get('/api/dashboard/stats'),
   charts: () => api.get('/api/dashboard/charts'),
+  finance: () => api.get('/api/dashboard/finance'),
+  operations: () => api.get('/api/dashboard/operations'),
 };
 
 // ─── Phase 3e: HR & Payroll ─────────────────────────────────────────────────
@@ -199,6 +205,7 @@ export const bookingsAPI = {
   calendar: (start: string, end: string) =>
     api.get('/api/bookings/calendar', { params: { start, end } }),
   show: (id: number) => api.get(`/api/bookings/${id}`),
+  pdf: (id: number) => api.get(`/api/bookings/${id}/pdf`, { responseType: 'blob' }),
   create: (data: any) => api.post('/api/bookings', data),
   updateStatus: (id: number, status: string, notes?: string, rejectionReason?: string) =>
     api.post(`/api/bookings/${id}/status`, { status, notes, rejection_reason: rejectionReason }),
@@ -226,6 +233,8 @@ export const tenantsAPI = {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
   },
+  deleteDocument: (tenantId: number, docId: number) =>
+    api.delete(`/api/tenants/${tenantId}/documents/${docId}`),
   generatePortalCredentials: (id: number) =>
     api.post(`/api/tenants/${id}/portal-credentials`),
 };
@@ -258,6 +267,7 @@ export const accountingAPI = {
   deleteAccount:   (id: number) => api.delete(`/api/chart-of-accounts/${id}`),
 
   accounts:        () => api.get('/api/accounts'),
+  createOperatingAccount: (data: any) => api.post('/api/accounts', data),
   accountTransactions: (id: number, params?: Record<string, string>) =>
     api.get(`/api/accounts/${id}/transactions`, { params }),
   transfer:        (data: any) => api.post('/api/accounts/transfer', data),

@@ -13,7 +13,13 @@ return [
         array_filter(array_map('trim', explode(',', (string) env('CORS_ALLOWED_ORIGINS', ''))))
     ),
 
-    'allowed_origins_patterns' => ['^http:\/\/localhost.*'],
+    // Must be valid delimited regexes — these are run through preg_match.
+    // Allow any localhost / 127.0.0.1 port, and any Cloudflare quick-tunnel URL.
+    'allowed_origins_patterns' => [
+        '#^https?://localhost(:\d+)?$#',
+        '#^https?://127\.0\.0\.1(:\d+)?$#',
+        '#^https://[a-z0-9-]+\.trycloudflare\.com$#',
+    ],
 
     'allowed_headers' => ['*'],
 

@@ -4,14 +4,103 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Account;
+use App\Models\ChartOfAccount;
 use App\Services\AccountingService;
+use App\Services\AuditService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class AccountController extends Controller
 {
-    public function __construct(private AccountingService $accountingService) {}
+    public function __construct(
+        private AccountingService $accountingService,
+        private AuditService $auditService
+    ) {}
+
+    /** Asset-code ranges for each operating-account type (flat, like the seed). */
+    private const CODE_RANGES = [
+        'cash'         => [1001, 1009],
+        'mobile_money' => [1010, 1019],
+        'bank'         => [1020, 1029],
+    ];
+
+    /**
+     * Create an operating account and auto-create its linked Chart-of-Accounts
+     * asset sub-account with the next free code in that type's range.
+     */
+    public function store(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'name'               => 'required|string|max:255',
+            'type'               => 'required|in:cash,bank,mobile_money',
+            'account_identifier' => 'nullable|string|max:100',
+            'notes'              => 'nullable|string|max:1000',
+        ]);
+
+        $code = $this->nextCodeForType($data['type']);
+        if ($code === null) {
+            return response()->json([
+                'message' => 'No free Chart-of-Accounts code remains for this account type. Contact an administrator.',
+            ], 422);
+        }
+
+        $account = DB::transaction(function () use ($data, $code) {
+            // 1) Create the COA asset entry (flat — no parent, not a system account).
+            $coa = ChartOfAccount::create([
+                'code'        => $code,
+                'name'        => $data['name'],
+                'type'        => 'asset',
+                'parent_id'   => null,
+                'description' => 'Operating account (' . str_replace('_', ' ', $data['type']) . ')',
+                'active'      => true,
+                'is_system'   => false,
+            ]);
+
+            // 2) Create the operating account linked to it.
+            $acct = Account::create([
+                'chart_of_account_id' => $coa->id,
+                'name'                => $data['name'],
+                'type'                => $data['type'],
+                'account_identifier'  => $data['account_identifier'] ?? null,
+                'active'              => true,
+                'notes'               => $data['notes'] ?? null,
+            ]);
+
+            $this->auditService->log('created', Account::class, $acct->id, null, [
+                'name' => $acct->name, 'type' => $acct->type, 'coa_code' => $code,
+            ]);
+
+            return $acct->load('chartOfAccount');
+        });
+
+        return response()->json([
+            'id'                 => $account->id,
+            'name'               => $account->name,
+            'type'               => $account->type,
+            'account_identifier' => $account->account_identifier,
+            'active'             => $account->active,
+            'notes'              => $account->notes,
+            'coa_code'           => $account->chartOfAccount?->code,
+            'balance'            => $account->balance(),
+        ], 201);
+    }
+
+    /** Next free asset code within the type's range, or null if the range is full. */
+    private function nextCodeForType(string $type): ?string
+    {
+        [$start, $end] = self::CODE_RANGES[$type];
+        $taken = ChartOfAccount::whereBetween('code', [(string) $start, (string) $end])
+            ->pluck('code')->all();
+
+        for ($n = $start; $n <= $end; $n++) {
+            if (!in_array((string) $n, $taken, true)) {
+                return (string) $n;
+            }
+        }
+        return null;
+    }
 
     public function index(): JsonResponse
     {

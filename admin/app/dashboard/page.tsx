@@ -6,6 +6,11 @@ import { useAuth } from '@/lib/auth';
 import { usePermission } from '@/lib/permissions';
 import { dashboardAPI, bookingsAPI, leasesAPI } from '@/lib/api';
 import { DashboardCharts } from '@/components/dashboard/DashboardCharts';
+import { FinanceDashboard } from '@/components/dashboard/FinanceDashboard';
+import { OperationsDashboard } from '@/components/dashboard/OperationsDashboard';
+import {
+  AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
+} from 'recharts';
 
 interface Stats {
   total_staff: number;
@@ -22,6 +27,7 @@ interface Stats {
   revenue_this_month: string;
   revenue_ytd: string;
   outstanding_ar: string;
+  booking_trend: { date: string; bookings: number }[];
   recent_bookings: BookingRow[];
   pending_admin_approvals: BookingRow[];
   pending_finance_approvals: BookingRow[];
@@ -61,7 +67,16 @@ const STATUS_LABELS: Record<string, string> = {
 
 type TabKey = 'overview' | 'finance' | 'operations';
 
+// Role router: finance and operations staff get their own focused dashboards;
+// super_admin/admin keep the combined tabbed view.
 export default function Dashboard() {
+  const { user } = useAuth();
+  if (user?.role === 'finance')    return <FinanceDashboard />;
+  if (user?.role === 'operations') return <OperationsDashboard />;
+  return <AdminTabbedDashboard />;
+}
+
+function AdminTabbedDashboard() {
   const { user } = useAuth();
   const router   = useRouter();
   const { hasPermission } = usePermission();
@@ -198,6 +213,9 @@ export default function Dashboard() {
           Open Inbox →
         </button>
       </div>
+
+      {/* Booking trend */}
+      <BookingTrendChart data={stats?.booking_trend} loading={loading} />
       </div>
       )}
 
@@ -443,6 +461,49 @@ export default function Dashboard() {
 }
 
 /* ── Sub-components ─────────────────────────────────────────────────────────── */
+
+function BookingTrendChart({ data, loading }: { data?: { date: string; bookings: number }[]; loading: boolean }) {
+  const total = data?.reduce((s, d) => s + d.bookings, 0) ?? 0;
+  return (
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h3 className="text-sm font-semibold text-[#1B2D4F]">Booking Trend</h3>
+          <p className="text-xs text-gray-400">Bookings received over the last 30 days</p>
+        </div>
+        <div className="text-right">
+          <p className="text-2xl font-bold text-[#C9A052] leading-none">{total}</p>
+          <p className="text-[10px] text-gray-400 uppercase tracking-wide">total · 30d</p>
+        </div>
+      </div>
+      {loading ? (
+        <div className="h-56 bg-gray-50 rounded animate-pulse" />
+      ) : (
+        <ResponsiveContainer width="100%" height={224}>
+          <AreaChart data={data} margin={{ top: 5, right: 8, left: -18, bottom: 0 }}>
+            <defs>
+              <linearGradient id="bookingFill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#C9A052" stopOpacity={0.35} />
+                <stop offset="100%" stopColor="#C9A052" stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
+            <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#9ca3af' }} interval={4}
+              tickLine={false} axisLine={{ stroke: '#e5e7eb' }} />
+            <YAxis tick={{ fontSize: 10, fill: '#9ca3af' }} allowDecimals={false}
+              tickLine={false} axisLine={false} width={32} />
+            <Tooltip
+              contentStyle={{ borderRadius: 8, border: '1px solid #e5e7eb', fontSize: 12 }}
+              labelStyle={{ color: '#1B2D4F', fontWeight: 600 }}
+              formatter={(v: any) => [`${v} booking${v === 1 ? '' : 's'}`, '']} />
+            <Area type="monotone" dataKey="bookings" stroke="#1B2D4F" strokeWidth={2}
+              fill="url(#bookingFill)" dot={false} activeDot={{ r: 4, fill: '#C9A052' }} />
+          </AreaChart>
+        </ResponsiveContainer>
+      )}
+    </div>
+  );
+}
 
 function KpiCard({ label, value, icon, color, description, phase, onClick }: {
   label: string; value: string | number; icon: string; color: string;

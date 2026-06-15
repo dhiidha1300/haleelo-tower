@@ -27,8 +27,7 @@ class ExpenseService
 
             $receiptUrl = null;
             if ($receipt) {
-                $path = $receipt->store('expenses/receipts', 'public');
-                $receiptUrl = Storage::disk('public')->url($path);
+                $receiptUrl = \App\Support\FileStorage::put($receipt, 'expenses/receipts');
             }
 
             $entry = $this->accountingService->postJournalEntry(

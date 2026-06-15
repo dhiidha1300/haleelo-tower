@@ -72,6 +72,14 @@ class UserService
         if (isset($data['two_factor_enabled'])) {
             $updateData['two_factor_enabled'] = (bool) $data['two_factor_enabled'];
         }
+        // Allow an admin to set a new password from the Edit User form. Only
+        // applied when a non-empty value is provided; the 'hashed' cast hashes it.
+        if (!empty($data['password'])) {
+            $updateData['password'] = $this->authService->hashPassword($data['password']);
+            // A fresh password should also clear any lockout from failed attempts.
+            $updateData['failed_login_attempts'] = 0;
+            $updateData['locked_until'] = null;
+        }
 
         $user->update($updateData);
 

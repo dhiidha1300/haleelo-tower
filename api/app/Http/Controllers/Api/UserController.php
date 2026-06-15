@@ -93,6 +93,8 @@ class UserController extends Controller
             'status'             => 'in:active,inactive',
             'profile_photo_url'  => 'nullable|url',
             'two_factor_enabled' => 'nullable|boolean',
+            'password'           => 'nullable|string|min:8',
+            'password_confirmation' => 'nullable|same:password',
         ]);
 
         try {

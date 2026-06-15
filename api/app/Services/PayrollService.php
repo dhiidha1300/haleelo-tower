@@ -256,9 +256,8 @@ class PayrollService
             foreach ($run->payslips as $slip) {
                 try {
                     $pdf  = $this->generatePayslipPdf($slip);
-                    $path = "payslips/{$slip->payslip_code}.pdf";
-                    \Illuminate\Support\Facades\Storage::disk('public')->put($path, $pdf);
-                    $slip->update(['pdf_file_url' => \Illuminate\Support\Facades\Storage::disk('public')->url($path)]);
+                    $path = \App\Support\FileStorage::putContents("payslips/{$slip->payslip_code}.pdf", $pdf);
+                    $slip->update(['pdf_file_url' => $path]);
 
                     dispatch(new \App\Jobs\SendPayslipJob($slip->fresh('employee')));
                 } catch (\Exception $e) {

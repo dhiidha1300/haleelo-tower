@@ -73,6 +73,12 @@ class User extends BaseUser
         return $query->role($role);
     }
 
+    /** Stored value is an S3 key (or legacy URL); expose as a usable URL. */
+    public function getProfilePhotoUrlAttribute($value): ?string
+    {
+        return \App\Support\FileStorage::url($value);
+    }
+
     // Methods
     public function isLocked(): bool
     {

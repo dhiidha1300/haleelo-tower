@@ -33,8 +33,7 @@ class VendorBillService
         return DB::transaction(function () use ($data, $user, $receipt) {
             $receiptUrl = null;
             if ($receipt) {
-                $path = $receipt->store('vendor-bills/receipts', 'public');
-                $receiptUrl = Storage::disk('public')->url($path);
+                $receiptUrl = \App\Support\FileStorage::put($receipt, 'vendor-bills/receipts');
             }
 
             $total = collect($data['items'])->reduce(

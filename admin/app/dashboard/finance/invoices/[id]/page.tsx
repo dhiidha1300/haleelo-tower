@@ -33,7 +33,12 @@ export default function InvoiceDetailPage() {
 
   useEffect(() => {
     fetchInvoice();
-    accountingAPI.accounts().then(r => setAccounts(r.data.accounts));
+    // Accounts are only needed for the Record-Payment form. Fetching them
+    // requires the accounts permission, which Operations staff don't have —
+    // so only load them for users who can record payments (avoids a 403).
+    if (hasPermission('manage-payments')) {
+      accountingAPI.accounts().then(r => setAccounts(r.data.accounts)).catch(() => {});
+    }
   }, [id]);
 
   const handleSend = async () => {

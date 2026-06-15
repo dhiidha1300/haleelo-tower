@@ -16,9 +16,25 @@ class SettingsController extends Controller
 
     public function index(): JsonResponse
     {
+        // SystemSetting::all() returns a cached key => value array.
         $settings = SystemSetting::all();
 
+        // logo_url is stored as an object key — expose a usable (signed) URL.
+        if (!empty($settings['logo_url'])) {
+            $settings['logo_url'] = \App\Support\FileStorage::url($settings['logo_url']);
+        }
+
         return response()->json($settings);
+    }
+
+    /** Public branding info for favicons / page titles (no auth required). */
+    public function branding(): JsonResponse
+    {
+        return response()->json([
+            'building_name' => SystemSetting::get('building_name', 'Haleelo Tower'),
+            'logo_url'      => \App\Support\FileStorage::url(SystemSetting::get('logo_url', '')),
+            'address'       => SystemSetting::get('address', ''),
+        ]);
     }
 
     public function show(string $key): JsonResponse
@@ -30,6 +46,10 @@ class SettingsController extends Controller
                 'error' => 'Not Found',
                 'message' => "Setting '{$key}' not found.",
             ], 404);
+        }
+
+        if ($setting->key === 'logo_url' && $setting->value) {
+            $setting->value = \App\Support\FileStorage::url($setting->value);
         }
 
         return response()->json($setting);
@@ -116,21 +136,17 @@ class SettingsController extends Controller
         ]);
 
         try {
-            // Delete old logo if stored locally
-            $oldUrl = SystemSetting::get('logo_url', '');
-            if ($oldUrl && str_contains($oldUrl, '/storage/logos/')) {
-                $oldPath = 'logos/' . basename($oldUrl);
-                Storage::disk('public')->delete($oldPath);
-            }
+            // Delete the previous logo (handles both legacy local paths and S3 keys)
+            \App\Support\FileStorage::delete(SystemSetting::get('logo_url', ''));
 
-            $path = $request->file('logo')->store('logos', 'public');
-            $url  = url('storage/' . $path);
+            // Store the object key; the signed URL is produced on read.
+            $path = \App\Support\FileStorage::put($request->file('logo'), 'logos');
 
-            SystemSetting::set('logo_url', $url, 'Building logo URL', Auth::id());
+            SystemSetting::set('logo_url', $path, 'Building logo URL', Auth::id());
 
             $this->auditService->log('updated', SystemSetting::class, 0, null, ['key' => 'logo_url']);
 
-            return response()->json(['logo_url' => $url]);
+            return response()->json(['logo_url' => \App\Support\FileStorage::url($path)]);
         } catch (\Exception $e) {
             return response()->json(['message' => 'Upload failed: ' . $e->getMessage()], 500);
         }
@@ -150,6 +166,11 @@ class SettingsController extends Controller
         ];
 
         $settings = SystemSetting::whereIn('key', $keys)->get()->keyBy('key');
+
+        // Resolve the stored logo key into a usable (signed for S3) URL.
+        if (isset($settings['logo_url']) && $settings['logo_url']->value) {
+            $settings['logo_url']->value = \App\Support\FileStorage::url($settings['logo_url']->value);
+        }
 
         return response()->json($settings);
     }

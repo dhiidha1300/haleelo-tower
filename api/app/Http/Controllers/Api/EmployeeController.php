@@ -90,10 +90,9 @@ class EmployeeController extends Controller
     public function uploadContract(Request $request, Employee $employee): JsonResponse
     {
         $request->validate(['contract' => 'required|file|mimes:pdf,jpg,jpeg,png|max:10240']);
-        $path = $request->file('contract')->store("employees/{$employee->id}/contract", 'public');
-        $url  = Storage::disk('public')->url($path);
-        $employee->update(['contract_file_url' => $url]);
-        return response()->json(['contract_file_url' => $url]);
+        $path = \App\Support\FileStorage::put($request->file('contract'), "employees/{$employee->id}/contract");
+        $employee->update(['contract_file_url' => $path]);
+        return response()->json(['contract_file_url' => \App\Support\FileStorage::url($path)]);
     }
 
     public function destroy(Employee $employee): JsonResponse

@@ -11,6 +11,7 @@ use App\Models\Tenant;
 use App\Models\User;
 use App\Models\WaitingList;
 use App\Models\Account;
+use App\Models\VendorBill;
 use App\Services\ReportService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
@@ -32,7 +33,137 @@ class DashboardController extends Controller
         ]);
     }
 
-    public function stats(): JsonResponse
+    /** Finance-role dashboard: money in, money out, balances and receivables. */
+    public function finance(ReportService $reports): JsonResponse
+    {
+        $monthStart = now()->startOfMonth()->toDateString();
+        $monthEnd   = now()->endOfMonth()->toDateString();
+
+        // ── Revenue (cash received) ──────────────────────────────────────────
+        $revenueThisMonth = (string) Payment::where('type', 'customer_receipt')
+            ->whereBetween('payment_date', [$monthStart, $monthEnd])->sum('amount');
+        $revenueYtd = (string) Payment::where('type', 'customer_receipt')
+            ->whereYear('payment_date', now()->year)->sum('amount');
+
+        // ── Expenses (direct expenses + vendor-bill payments out) ────────────
+        $expenseThisMonth = (string) \App\Models\Expense::whereBetween('expense_date', [$monthStart, $monthEnd])->sum('amount');
+        $expenseYtd       = (string) \App\Models\Expense::whereYear('expense_date', now()->year)->sum('amount');
+
+        // Expense breakdown by COA category (YTD, top 6)
+        $expenseByCategory = \App\Models\Expense::whereYear('expense_date', now()->year)
+            ->with('expenseAccount')
+            ->get()
+            ->groupBy(fn ($e) => $e->expenseAccount?->name ?? 'Uncategorised')
+            ->map(fn ($g) => (float) $g->sum('amount'))
+            ->sortDesc()
+            ->take(6)
+            ->map(fn ($amount, $name) => ['category' => $name, 'amount' => $amount])
+            ->values();
+
+        // ── Accounts Receivable ──────────────────────────────────────────────
+        $overdue       = Invoice::overdue();
+        $overdueCount  = (clone $overdue)->count();
+        $overdueTotal  = (string) (clone $overdue)->get()->reduce(fn ($c, $i) => bcadd($c, $i->balanceDue(), 2), '0');
+        $outstandingAr = (string) Invoice::unpaid()->get()->reduce(fn ($c, $i) => bcadd($c, $i->balanceDue(), 2), '0');
+
+        $overdueList = Invoice::overdue()->orderBy('due_date')->take(8)->get()->map(fn ($i) => [
+            'id'          => $i->id,
+            'invoice_code'=> $i->invoice_code,
+            'bill_to'     => $i->billToName(),
+            'balance'     => $i->balanceDue(),
+            'due_date'    => $i->due_date?->toDateString(),
+            'days_overdue'=> $i->due_date ? max(0, (int) now()->diffInDays($i->due_date, false) * -1) : 0,
+        ]);
+
+        // ── Accounts Payable (unpaid vendor bills) ───────────────────────────
+        $unpaidBills   = VendorBill::unpaid()->with('vendor')->get();
+        $apTotal       = (string) $unpaidBills->reduce(fn ($c, $b) => bcadd($c, $b->balanceDue(), 2), '0');
+        $apList        = $unpaidBills->sortBy('due_date')->take(8)->map(fn ($b) => [
+            'id'        => $b->id,
+            'bill_code' => $b->bill_code,
+            'vendor'    => $b->vendor?->name,
+            'balance'   => $b->balanceDue(),
+            'due_date'  => $b->due_date?->toDateString(),
+        ])->values();
+
+        // ── Account balances ─────────────────────────────────────────────────
+        $accounts = Account::all()->map(fn ($a) => [
+            'name' => $a->name, 'type' => $a->type, 'balance' => $a->balance(),
+        ]);
+        $totalCash = (string) $accounts->reduce(fn ($c, $a) => bcadd($c, $a['balance'], 2), '0');
+
+        return response()->json([
+            'revenue_this_month' => $revenueThisMonth,
+            'revenue_ytd'        => $revenueYtd,
+            'expense_this_month' => $expenseThisMonth,
+            'expense_ytd'        => $expenseYtd,
+            'net_this_month'     => bcsub($revenueThisMonth, $expenseThisMonth, 2),
+            'expense_by_category'=> $expenseByCategory,
+            'outstanding_ar'     => $outstandingAr,
+            'overdue_count'      => $overdueCount,
+            'overdue_total'      => $overdueTotal,
+            'overdue_invoices'   => $overdueList,
+            'ap_outstanding'     => $apTotal,
+            'ap_count'           => $unpaidBills->count(),
+            'unpaid_vendor_bills'=> $apList,
+            'account_balances'   => $accounts,
+            'total_cash'         => $totalCash,
+            'revenue_trend'      => $reports->revenueTrend(),
+            'revenue_by_source'  => $reports->revenueBySource(),
+        ]);
+    }
+
+    /** Operations-role dashboard: bookings, leases, tenants. */
+    public function operations(): JsonResponse
+    {
+        $upcomingApproved = Booking::where('status', 'booking_approved')
+            ->whereDate('booking_date', '>=', today())
+            ->whereDate('booking_date', '<=', today()->addDays(7))->count();
+
+        $activeLeases   = Lease::where('status', 'active')->count();
+        $pendingLeases  = Lease::where('status', 'pending_approval')->count();
+        $expiringLeases = Lease::active()->expiringSoon(10)->count();
+
+        $expiringLeasesList = Lease::active()->expiringSoon(10)
+            ->with(['tenant', 'space'])->get()
+            ->sortBy('end_date')
+            ->map(fn ($l) => [
+                'id'         => $l->id,
+                'lease_code' => $l->lease_code,
+                'tenant_name'=> $l->tenant?->company_name,
+                'space_name' => $l->space?->name,
+                'end_date'   => $l->end_date?->toDateString(),
+                'days_left'  => (int) now()->diffInDays($l->end_date, false),
+            ])->values();
+
+        $pendingLeaseApprovals = Lease::where('status', 'pending_approval')
+            ->with(['tenant', 'space'])->latest()->take(6)->get()->map(fn ($l) => [
+                'id'          => $l->id,
+                'lease_code'  => $l->lease_code,
+                'tenant_name' => $l->tenant?->company_name,
+                'space_name'  => $l->space?->name,
+                'rent'        => $l->billing_cycle === 'monthly' ? $l->monthly_rent : $l->semester_amount,
+                'billing_cycle'=> $l->billing_cycle,
+            ]);
+
+        $activeTenants = Tenant::where('status', 'active')->count();
+        $expiringDocs  = \App\Models\TenantDocument::expiringSoon(30)->count();
+        $waitingList   = WaitingList::where('notified', false)->count();
+
+        return response()->json([
+            'upcoming_bookings'    => $upcomingApproved,
+            'active_leases'        => $activeLeases,
+            'pending_leases'       => $pendingLeases,
+            'expiring_leases'      => $expiringLeases,
+            'expiring_leases_list' => $expiringLeasesList,
+            'pending_lease_approvals' => $pendingLeaseApprovals,
+            'active_tenants'       => $activeTenants,
+            'expiring_documents'   => $expiringDocs,
+            'waiting_list'         => $waitingList,
+        ]);
+    }
+
+    public function stats(ReportService $reports): JsonResponse
     {
         $user = Auth::user();
 
@@ -183,6 +314,8 @@ class DashboardController extends Controller
             'revenue_this_month'     => $revenueThisMonth,
             'revenue_ytd'            => $revenueYtd,
             'outstanding_ar'         => $outstandingAr,
+            // Trends
+            'booking_trend'          => $reports->bookingTrend(30),
             // Lists
             'recent_bookings'        => $recentBookings,
             'pending_admin_approvals'   => $pendingForAdmin,

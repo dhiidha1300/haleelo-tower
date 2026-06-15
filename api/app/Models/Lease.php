@@ -33,6 +33,16 @@ class Lease extends Model
         'renewal_reminder_sent'   => 'boolean',
     ];
 
+    public function getContractFileUrlAttribute($value): ?string
+    {
+        return \App\Support\FileStorage::url($value);
+    }
+
+    public function getExternalContractUrlAttribute($value): ?string
+    {
+        return \App\Support\FileStorage::url($value);
+    }
+
     public function tenant(): BelongsTo
     {
         return $this->belongsTo(Tenant::class);

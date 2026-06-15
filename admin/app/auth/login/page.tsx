@@ -12,6 +12,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [address, setAddress] = useState('');
 
   // If already authenticated, go to dashboard
   useEffect(() => {
@@ -19,6 +20,15 @@ export default function LoginPage() {
       router.replace('/dashboard');
     }
   }, [authLoading, isAuthenticated, router]);
+
+  // Pull the building address from public branding (settings) so it's not hardcoded.
+  useEffect(() => {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+    fetch(`${apiUrl}/api/branding`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d?.address) setAddress(d.address); })
+      .catch(() => {});
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,7 +94,7 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <p className="mt-12 text-gray-400 text-sm">Mogadishu, Somalia</p>
+          <p className="mt-12 text-gray-400 text-sm">{address}</p>
         </div>
       </div>
 
@@ -153,14 +163,6 @@ export default function LoginPage() {
                 {loading ? 'Signing in...' : 'Sign In'}
               </button>
             </form>
-
-            <div className="mt-8 pt-8 border-t border-gray-200">
-              <p className="text-gray-600 text-sm text-center mb-4">Demo Credentials</p>
-              <div className="bg-gray-50 p-4 rounded-lg text-sm space-y-2">
-                <p><span className="font-medium">Email:</span> admin@halelotower.so</p>
-                <p><span className="font-medium">Password:</span> AdminPass123!</p>
-              </div>
-            </div>
           </div>
 
           <p className="text-center text-gray-600 text-sm mt-8">

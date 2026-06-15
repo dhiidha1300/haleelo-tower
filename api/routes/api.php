@@ -39,6 +39,10 @@ Route::middleware('throttle:60,1')->group(function () {
     Route::post('/auth/2fa/resend', [AuthController::class, 'resendOtp']);
     Route::post('/auth/forgot-password', [PasswordResetController::class, 'forgotPassword']);
     Route::post('/auth/reset-password', [PasswordResetController::class, 'resetPassword']);
+
+    // Public branding (building name + signed logo URL) for favicon/title on
+    // login pages and client apps. No sensitive data.
+    Route::get('/branding', [\App\Http\Controllers\Api\SettingsController::class, 'branding']);
 });
 
 // Authenticated routes
@@ -127,6 +131,8 @@ Route::middleware('auth:sanctum')->group(function () {
     // ─── Dashboard ──────────────────────────────────────────────────────────────
     Route::get('/dashboard/stats', [DashboardController::class, 'stats']);
     Route::get('/dashboard/charts', [DashboardController::class, 'charts']);
+    Route::get('/dashboard/finance', [DashboardController::class, 'finance']);
+    Route::get('/dashboard/operations', [DashboardController::class, 'operations']);
 
     // ─── Phase 3d: Financial Reports ─────────────────────────────────────────────
     Route::middleware('permission:view-financial-reports')->group(function () {
@@ -158,6 +164,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/bookings', [BookingController::class, 'index']);
         Route::get('/bookings/calendar', [BookingController::class, 'calendar']);
         Route::get('/bookings/{booking}', [BookingController::class, 'show']);
+        Route::get('/bookings/{booking}/pdf', [BookingController::class, 'pdf']);
     });
     Route::post('/bookings/availability', [BookingController::class, 'checkAvailability']);
     Route::middleware('permission:create-booking')->group(function () {
@@ -187,6 +194,7 @@ Route::middleware('auth:sanctum')->group(function () {
     });
     Route::middleware('role:super_admin|admin')->group(function () {
         Route::post('/tenants/{tenant}/portal-credentials', [TenantController::class, 'generatePortalCredentials']);
+        Route::delete('/tenants/{tenant}/documents/{document}', [TenantController::class, 'deleteDocument']);
     });
 
     // ─── Phase 2: Leases ────────────────────────────────────────────────────────
@@ -231,6 +239,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::middleware('permission:transfer-accounts')->group(function () {
         Route::post('/accounts/transfer', [AccountController::class, 'transfer']);
         Route::get('/accounts/transfer/{journalEntry}/receipt', [AccountController::class, 'transferReceipt']);
+    });
+    // Create operating account (+ auto COA sub-account) — Super Admin & Admin only
+    Route::middleware('role:super_admin|admin')->group(function () {
+        Route::post('/accounts', [AccountController::class, 'store']);
     });
 
     // Journal entries + trial balance

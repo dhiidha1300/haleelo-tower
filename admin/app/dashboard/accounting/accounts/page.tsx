@@ -23,7 +23,8 @@ interface Txn {
 }
 
 export default function AccountsPage() {
-  const { hasPermission } = usePermission();
+  const { hasPermission, isSuperAdmin, isAdmin } = usePermission();
+  const canCreate = isSuperAdmin || isAdmin;
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [total, setTotal]       = useState('0');
   const [loading, setLoading]   = useState(true);
@@ -43,6 +44,28 @@ export default function AccountsPage() {
   };
 
   const closeTransfer = () => { setShowTransfer(false); setTransferMsg(''); setLastTransfer(null); };
+
+  const [showCreate, setShowCreate] = useState(false);
+  const [createForm, setCreateForm] = useState({ name: '', type: 'mobile_money', account_identifier: '', notes: '' });
+  const [createMsg, setCreateMsg]   = useState('');
+  const [creating, setCreating]     = useState(false);
+
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCreating(true);
+    setCreateMsg('');
+    try {
+      const res = await accountingAPI.createOperatingAccount(createForm);
+      setCreateMsg(`✓ Account created — Chart-of-Accounts code ${res.data.coa_code} assigned.`);
+      setCreateForm({ name: '', type: 'mobile_money', account_identifier: '', notes: '' });
+      fetchAccounts();
+      setTimeout(() => { setShowCreate(false); setCreateMsg(''); }, 1800);
+    } catch (err: any) {
+      setCreateMsg('✗ ' + (err.response?.data?.message || 'Failed to create account'));
+    } finally {
+      setCreating(false);
+    }
+  };
 
   const canTransfer = hasPermission('transfer-accounts');
 
@@ -97,12 +120,20 @@ export default function AccountsPage() {
           <h1 className="text-3xl font-bold text-[#1B2D4F]">Operating Accounts</h1>
           <p className="text-gray-600">Live balances computed from transaction history</p>
         </div>
-        {canTransfer && (
-          <button onClick={() => setShowTransfer(true)}
-            className="bg-[#C9A052] hover:bg-[#b89140] text-white font-semibold px-6 py-3 rounded-lg transition-colors">
-            ⇄ Transfer
-          </button>
-        )}
+        <div className="flex gap-3">
+          {canCreate && (
+            <button onClick={() => { setShowCreate(true); setCreateMsg(''); }}
+              className="bg-[#1B2D4F] hover:bg-[#0f1d33] text-white font-semibold px-6 py-3 rounded-lg transition-colors">
+              + New Account
+            </button>
+          )}
+          {canTransfer && (
+            <button onClick={() => setShowTransfer(true)}
+              className="bg-[#C9A052] hover:bg-[#b89140] text-white font-semibold px-6 py-3 rounded-lg transition-colors">
+              ⇄ Transfer
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Total */}
@@ -169,6 +200,54 @@ export default function AccountsPage() {
               </tbody>
             </table>
           )}
+        </div>
+      )}
+
+      {/* Create account modal */}
+      {showCreate && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setShowCreate(false)}>
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6" onClick={e => e.stopPropagation()}>
+            <h2 className="text-lg font-bold text-[#1B2D4F] mb-1">New Operating Account</h2>
+            <p className="text-sm text-gray-500 mb-4">A matching Chart-of-Accounts code is created automatically.</p>
+            <form onSubmit={handleCreate} className="space-y-4">
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Account Name *</label>
+                <input type="text" required value={createForm.name} placeholder="e.g. Salaam Bank – Main"
+                  onChange={e => setCreateForm(p => ({ ...p, name: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A052]" />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Type *</label>
+                <select value={createForm.type} onChange={e => setCreateForm(p => ({ ...p, type: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A052]">
+                  <option value="mobile_money">📱 Mobile Money</option>
+                  <option value="bank">🏦 Bank</option>
+                  <option value="cash">💵 Cash</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Account Number / Identifier</label>
+                <input type="text" value={createForm.account_identifier} placeholder="Optional"
+                  onChange={e => setCreateForm(p => ({ ...p, account_identifier: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A052]" />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Notes</label>
+                <input type="text" value={createForm.notes} placeholder="Optional"
+                  onChange={e => setCreateForm(p => ({ ...p, notes: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A052]" />
+              </div>
+              {createMsg && <div className={`p-3 rounded-lg text-sm ${createMsg.startsWith('✓') ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>{createMsg}</div>}
+              <div className="flex gap-2 pt-1">
+                <button type="submit" disabled={creating}
+                  className="flex-1 bg-[#1B2D4F] hover:bg-[#0f1d33] text-white font-medium py-2.5 rounded-lg text-sm disabled:opacity-50">
+                  {creating ? 'Creating…' : 'Create Account'}
+                </button>
+                <button type="button" onClick={() => setShowCreate(false)}
+                  className="px-5 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-600">Cancel</button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 

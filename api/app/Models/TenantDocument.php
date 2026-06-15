@@ -17,6 +17,12 @@ class TenantDocument extends Model
         'expiry_date' => 'date',
     ];
 
+    /** Stored value is an S3 key; expose it as a usable (signed) URL. */
+    public function getFileUrlAttribute($value): ?string
+    {
+        return \App\Support\FileStorage::url($value);
+    }
+
     public function scopeExpiringSoon($query, int $days = 30)
     {
         return $query->whereNotNull('expiry_date')
