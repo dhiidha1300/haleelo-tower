@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\CateringPackageController;
 use App\Http\Controllers\Api\WhatsAppController;
 use App\Http\Controllers\Api\PasswordResetController;
 use App\Http\Controllers\Api\EmailController;
+use App\Http\Controllers\Api\EmailTemplateController;
 use App\Http\Controllers\Api\ElectricityRateController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\ChartOfAccountController;
@@ -117,6 +118,15 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/settings/{key}', [SettingsController::class, 'updateSingle']);
         Route::post('/settings/logo/upload', [SettingsController::class, 'uploadLogo']);
 
+        // Email templates (manage in Settings → Email)
+        Route::get('/email-templates', [EmailTemplateController::class, 'index']);
+        Route::get('/email-templates/{emailTemplate}', [EmailTemplateController::class, 'show']);
+        Route::post('/email-templates', [EmailTemplateController::class, 'store']);
+        Route::put('/email-templates/{emailTemplate}', [EmailTemplateController::class, 'update']);
+        Route::delete('/email-templates/{emailTemplate}', [EmailTemplateController::class, 'destroy']);
+        Route::post('/email-templates/{emailTemplate}/preview', [EmailTemplateController::class, 'preview']);
+        Route::post('/email-templates/{emailTemplate}/test', [EmailTemplateController::class, 'test']);
+
         // Settings by category
         Route::get('/settings-category/general', [SettingsController::class, 'getGeneralSettings']);
         Route::get('/settings-category/session', [SettingsController::class, 'getSessionSettings']);
@@ -133,6 +143,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/dashboard/charts', [DashboardController::class, 'charts']);
     Route::get('/dashboard/finance', [DashboardController::class, 'finance']);
     Route::get('/dashboard/operations', [DashboardController::class, 'operations']);
+    Route::get('/dashboard/admin-overview', [DashboardController::class, 'adminOverview']);
 
     // ─── Phase 3d: Financial Reports ─────────────────────────────────────────────
     Route::middleware('permission:view-financial-reports')->group(function () {
@@ -167,16 +178,39 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/bookings/{booking}/pdf', [BookingController::class, 'pdf']);
     });
     Route::post('/bookings/availability', [BookingController::class, 'checkAvailability']);
+    // Coupons (B5) — Super Admin manages; booking creators validate codes
+    Route::middleware('role:super_admin')->group(function () {
+        Route::get('/coupons', [\App\Http\Controllers\Api\CouponController::class, 'index']);
+        Route::put('/coupons/{coupon}', [\App\Http\Controllers\Api\CouponController::class, 'update']);
+    });
     Route::middleware('permission:create-booking')->group(function () {
+        Route::post('/coupons/validate', [\App\Http\Controllers\Api\CouponController::class, 'validateCode']);
         Route::post('/bookings', [BookingController::class, 'store']);
     });
     Route::middleware('permission:approve-booking|reject-booking|cancel-booking|finance-approve-booking')->group(function () {
         Route::post('/bookings/{booking}/status', [BookingController::class, 'updateStatus']);
         Route::post('/bookings/{booking}/cancel-series', [BookingController::class, 'cancelSeries']);
     });
+    // ─── Maintenance ──────────────────────────────────────────────────────────
+    // View + create: Admin, Finance, Operations. Manage (assign/outsource/resolve): Admin, Operations.
+    Route::middleware('role:super_admin|admin|finance|operations')->group(function () {
+        Route::get('/maintenance', [\App\Http\Controllers\Api\MaintenanceController::class, 'index']);
+        Route::get('/maintenance/{maintenance}', [\App\Http\Controllers\Api\MaintenanceController::class, 'show']);
+        Route::get('/maintenance/{maintenance}/report', [\App\Http\Controllers\Api\MaintenanceController::class, 'report']);
+        Route::post('/maintenance', [\App\Http\Controllers\Api\MaintenanceController::class, 'store']);
+    });
+    Route::middleware('role:super_admin|admin|operations')->group(function () {
+        Route::post('/maintenance/{maintenance}/assign', [\App\Http\Controllers\Api\MaintenanceController::class, 'assign']);
+        Route::post('/maintenance/{maintenance}/outsource', [\App\Http\Controllers\Api\MaintenanceController::class, 'outsource']);
+        Route::post('/maintenance/{maintenance}/resolve', [\App\Http\Controllers\Api\MaintenanceController::class, 'resolve']);
+        Route::post('/maintenance/{maintenance}/cancel', [\App\Http\Controllers\Api\MaintenanceController::class, 'cancel']);
+    });
+
     Route::middleware('permission:manage-waiting-list')->group(function () {
-        Route::get('/waiting-list', [BookingController::class, 'waitingList']);
-        Route::post('/waiting-list', [BookingController::class, 'addToWaitingList']);
+        Route::get('/waiting-list', [\App\Http\Controllers\Api\WaitingListController::class, 'index']);
+        Route::post('/waiting-list', [\App\Http\Controllers\Api\WaitingListController::class, 'store']);
+        Route::post('/waiting-list/{waitingList}/cancel', [\App\Http\Controllers\Api\WaitingListController::class, 'cancel']);
+        Route::post('/waiting-list/{waitingList}/convert', [\App\Http\Controllers\Api\WaitingListController::class, 'convert']);
     });
 
     // ─── Phase 2: Tenants ───────────────────────────────────────────────────────
@@ -240,15 +274,20 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/accounts/transfer', [AccountController::class, 'transfer']);
         Route::get('/accounts/transfer/{journalEntry}/receipt', [AccountController::class, 'transferReceipt']);
     });
-    // Create operating account (+ auto COA sub-account) — Super Admin & Admin only
+    // Create / edit / (de)activate operating accounts — Super Admin & Admin only
     Route::middleware('role:super_admin|admin')->group(function () {
         Route::post('/accounts', [AccountController::class, 'store']);
+        Route::put('/accounts/{account}', [AccountController::class, 'update']);
+        Route::post('/accounts/{account}/active', [AccountController::class, 'setActive']);
+        Route::post('/accounts/{account}/reconcile', [AccountController::class, 'reconcile']);
+        Route::post('/accounts/{account}/reconcile/confirm', [AccountController::class, 'reconcileConfirm']);
     });
 
     // Journal entries + trial balance
     Route::middleware('permission:view-journal-entries|create-journal-entries')->group(function () {
         Route::get('/journal', [JournalController::class, 'index']);
         Route::get('/journal/trial-balance', [JournalController::class, 'trialBalance']);
+        Route::get('/journal/trial-balance-range', [JournalController::class, 'trialBalanceRange']);
         Route::get('/journal/{journalEntry}', [JournalController::class, 'show']);
     });
     Route::middleware('permission:create-journal-entries')->group(function () {
@@ -267,6 +306,8 @@ Route::middleware('auth:sanctum')->group(function () {
     // Send invoice — Finance + Admin (send-invoice permission)
     Route::middleware('permission:send-invoice')->group(function () {
         Route::post('/invoices/{invoice}/send', [InvoiceController::class, 'send']);
+        Route::post('/invoices/{invoice}/resend', [InvoiceController::class, 'resend']);
+        Route::post('/invoices/{invoice}/whatsapp', [InvoiceController::class, 'sendWhatsapp']);
     });
 
     // ─── Phase 3b: Payments ──────────────────────────────────────────────────────
@@ -291,6 +332,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::middleware('permission:manage-purchase-orders')->group(function () {
         Route::get('/purchase-orders', [PurchaseOrderController::class, 'index']);
         Route::get('/purchase-orders/{purchaseOrder}', [PurchaseOrderController::class, 'show']);
+        Route::get('/purchase-orders/{purchaseOrder}/pdf', [PurchaseOrderController::class, 'pdf']);
+        Route::post('/purchase-orders/{purchaseOrder}/whatsapp', [PurchaseOrderController::class, 'sendWhatsapp']);
         Route::post('/purchase-orders', [PurchaseOrderController::class, 'store']);
         Route::post('/purchase-orders/{purchaseOrder}/status', [PurchaseOrderController::class, 'updateStatus']);
     });

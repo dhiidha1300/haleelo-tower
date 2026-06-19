@@ -8,6 +8,7 @@ import { dashboardAPI, bookingsAPI, leasesAPI } from '@/lib/api';
 import { DashboardCharts } from '@/components/dashboard/DashboardCharts';
 import { FinanceDashboard } from '@/components/dashboard/FinanceDashboard';
 import { OperationsDashboard } from '@/components/dashboard/OperationsDashboard';
+import { AdminOverview } from '@/components/dashboard/AdminOverview';
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from 'recharts';
@@ -73,7 +74,7 @@ export default function Dashboard() {
   const { user } = useAuth();
   if (user?.role === 'finance')    return <FinanceDashboard />;
   if (user?.role === 'operations') return <OperationsDashboard />;
-  return <AdminTabbedDashboard />;
+  return <AdminOverview />;
 }
 
 function AdminTabbedDashboard() {

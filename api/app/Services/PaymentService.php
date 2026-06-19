@@ -17,6 +17,41 @@ class PaymentService
         private AccountingService $accountingService
     ) {}
 
+    /** Render the payment voucher/receipt PDF and return the raw bytes. */
+    public function voucherPdf(Payment $payment): string
+    {
+        $payment->load(['invoice', 'vendorBill.vendor', 'account', 'createdBy']);
+        $isReceipt = $payment->type === 'customer_receipt';
+
+        $building = [
+            'name'    => \App\Models\SystemSetting::get('building_name', 'Haleelo Tower'),
+            'address' => \App\Models\SystemSetting::get('address', ''),
+        ];
+
+        $rows = [
+            'Voucher No.'    => $payment->payment_code,
+            'Type'           => $isReceipt ? 'Receipt (money in)' : 'Vendor Payment (money out)',
+            'Date'           => $payment->payment_date->format('d M Y'),
+            'Payment Method' => ucfirst(str_replace('_', ' ', $payment->payment_method)),
+            'Account'        => $payment->account?->name,
+            ($isReceipt ? 'Received From' : 'Paid To') => $isReceipt
+                ? ($payment->invoice?->billToName() ?? 'Customer')
+                : ($payment->vendorBill?->vendor?->name ?? 'Vendor'),
+            'Reference Doc'  => $payment->invoice?->invoice_code ?? $payment->vendorBill?->bill_code ?? '—',
+            'Bank/Mobile Ref'=> $payment->reference_number ?? '—',
+            'Recorded By'    => $payment->createdBy?->name ?? 'System',
+        ];
+
+        return \Barryvdh\DomPDF\Facade\Pdf::loadView('pdfs.voucher', [
+            'title' => $isReceipt ? 'PAYMENT RECEIPT' : 'PAYMENT VOUCHER',
+            'code'  => $payment->payment_code,
+            'amount'=> $payment->amount,
+            'amountLabel' => $isReceipt ? 'AMOUNT RECEIVED' : 'AMOUNT PAID',
+            'rows'  => $rows,
+            'building' => $building,
+        ])->output();
+    }
+
     private function coaId(string $code): ?int
     {
         return ChartOfAccount::where('code', $code)->value('id');

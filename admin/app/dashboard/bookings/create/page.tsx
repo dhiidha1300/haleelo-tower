@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { bookingsAPI, productsAPI, cateringAPI } from '@/lib/api';
+import { bookingsAPI, productsAPI, cateringAPI, couponsAPI, waitingListAPI } from '@/lib/api';
 
 interface Space {
   id: number;
@@ -36,7 +36,60 @@ export default function CreateBookingPage() {
     recurrence_frequency: 'weekly',
     recurrence_days: [] as string[],
     recurrence_end_date: '',
+    coupon_code: '',
   });
+  const [couponInfo, setCouponInfo] = useState<{ discount_percent: number; owner: string } | null>(null);
+  const [couponMsg, setCouponMsg]   = useState('');
+  // Waiting-list overlay (shown when the slot is unavailable)
+  const [showWaitlist, setShowWaitlist] = useState(false);
+  const [waitlistChannel, setWaitlistChannel] = useState('email');
+  const [waitlistMsg, setWaitlistMsg] = useState('');
+  const [waitlistBusy, setWaitlistBusy] = useState(false);
+
+  const addToWaitlist = async () => {
+    setWaitlistBusy(true); setWaitlistMsg('');
+    try {
+      await waitingListAPI.add({
+        product_id: parseInt(form.product_id), session_type: form.session_type,
+        booking_date: form.booking_date, client_name: form.client_name,
+        client_email: form.client_email, client_phone: form.client_phone,
+        notify_channel: waitlistChannel,
+      });
+      setWaitlistMsg('✓ Added to the waiting list — the customer has been notified.');
+      setTimeout(() => { setShowWaitlist(false); router.push('/dashboard/waiting-list'); }, 1600);
+    } catch (err: any) {
+      setWaitlistMsg('✗ ' + (err.response?.data?.message || 'Failed to add to waiting list'));
+    } finally { setWaitlistBusy(false); }
+  };
+  // Product (space) services available as booking add-ons.
+  const [services, setServices] = useState<any[]>([]);
+  const [svcSel, setSvcSel] = useState<Record<number, { checked: boolean; price: string }>>({});
+
+  // Prefill date/time when arriving from the calendar (click a day / drag a range).
+  useEffect(() => {
+    const sp = new URLSearchParams(window.location.search);
+    const date = sp.get('date'); const start = sp.get('start'); const end = sp.get('end');
+    if (date || start || end) {
+      setForm(p => ({
+        ...p,
+        ...(date ? { booking_date: date } : {}),
+        ...(start ? { start_time: start } : {}),
+        ...(end ? { end_time: end } : {}),
+      }));
+    }
+  }, []);
+
+  const applyCoupon = async () => {
+    setCouponMsg(''); setCouponInfo(null);
+    if (!form.coupon_code.trim()) return;
+    try {
+      const r = await couponsAPI.validate(form.coupon_code.trim());
+      setCouponInfo({ discount_percent: r.data.discount_percent, owner: r.data.owner });
+      setCouponMsg(`✓ ${r.data.discount_percent}% discount will apply (code by ${r.data.owner})`);
+    } catch (err: any) {
+      setCouponMsg('✗ ' + (err.response?.data?.message || 'Invalid coupon code'));
+    }
+  };
 
   const WEEK_DAYS = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
 
@@ -54,18 +107,32 @@ export default function CreateBookingPage() {
   }, []);
 
   const selectedSpace = spaces.find(s => String(s.id) === form.product_id);
+
+  const servicesTotal = services.reduce((sum, s) =>
+    sum + (svcSel[s.id]?.checked ? parseFloat(svcSel[s.id]?.price || s.price || '0') : 0), 0);
+
   const totalPrice = (
     parseFloat(form.base_price || '0') +
     parseFloat(form.catering_price || '0') +
-    parseFloat(form.dj_requested ? form.dj_price || '0' : '0') +
-    parseFloat(form.cameraman_requested ? form.cameraman_price || '0' : '0')
+    servicesTotal
   ).toFixed(2);
 
   const handleProductChange = (productId: string) => {
     const space = spaces.find(s => String(s.id) === productId);
     setForm(p => ({ ...p, product_id: productId, base_price: space?.base_price ?? '0' }));
     setAvailable(null);
+    setServices([]); setSvcSel({});
+    if (productId) {
+      productsAPI.getServices(parseInt(productId))
+        .then(r => setServices((r.data ?? []).filter((s: any) => s.active)))
+        .catch(() => setServices([]));
+    }
   };
+
+  const toggleService = (id: number, defaultPrice: string) =>
+    setSvcSel(prev => ({ ...prev, [id]: { checked: !prev[id]?.checked, price: prev[id]?.price ?? defaultPrice } }));
+  const setServicePrice = (id: number, price: string) =>
+    setSvcSel(prev => ({ ...prev, [id]: { checked: prev[id]?.checked ?? true, price } }));
 
   const handleCateringChange = (id: string) => {
     const pkg = catering.find(c => String(c.id) === id);
@@ -74,20 +141,31 @@ export default function CreateBookingPage() {
 
   const checkAvailability = async () => {
     if (!form.product_id || !form.booking_date) return;
+    if (form.session_type === 'custom' && (!form.start_time || !form.end_time)) return;
     setChecking(true);
     try {
       const res = await bookingsAPI.checkAvailability({
         product_id:   parseInt(form.product_id),
         session_type: form.session_type,
         booking_date: form.booking_date,
-        start_time:   form.start_time || '08:00',
-        end_time:     form.end_time   || '13:00',
+        // Times only matter for custom sessions; the backend resolves the rest.
+        ...(form.session_type === 'custom' ? { start_time: form.start_time, end_time: form.end_time } : {}),
       });
       setAvailable(res.data.available);
     } finally {
       setChecking(false);
     }
   };
+
+  // Auto-check availability whenever the space / date / session / custom times change.
+  useEffect(() => {
+    setAvailable(null);
+    if (!form.product_id || !form.booking_date) return;
+    if (form.session_type === 'custom' && (!form.start_time || !form.end_time)) return;
+    const t = setTimeout(() => { checkAvailability(); }, 400);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.product_id, form.booking_date, form.session_type, form.start_time, form.end_time]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -104,12 +182,12 @@ export default function CreateBookingPage() {
         session_type:        form.session_type,
         booking_date:        form.booking_date,
         catering_package_id: form.catering_package_id ? parseInt(form.catering_package_id) : null,
-        dj_requested:        form.dj_requested,
-        cameraman_requested: form.cameraman_requested,
         base_price:          parseFloat(form.base_price || '0'),
         catering_price:      parseFloat(form.catering_price || '0'),
-        dj_price:            parseFloat(form.dj_price || '0'),
-        cameraman_price:     parseFloat(form.cameraman_price || '0'),
+        // Selected product services become the booking's add-ons.
+        extra_services:      services.filter(s => svcSel[s.id]?.checked)
+                               .map(s => ({ name: s.service_name, price: parseFloat(svcSel[s.id]?.price || s.price || '0') })),
+        extras_price:        servicesTotal,
         notes:               form.notes,
         type:                'conference_hall',
         recurring:           form.recurring,
@@ -125,6 +203,7 @@ export default function CreateBookingPage() {
           end_date:  form.recurrence_end_date,
         };
       }
+      if (form.coupon_code && couponInfo) payload.coupon_code = form.coupon_code;
       const res = await bookingsAPI.create(payload);
       router.push(`/dashboard/bookings/${res.data.id}`);
     } catch (err: any) {
@@ -196,13 +275,16 @@ export default function CreateBookingPage() {
           )}
 
           {form.product_id && form.booking_date && (
-            <div className="flex items-center gap-3">
-              <button type="button" onClick={checkAvailability} disabled={checking}
-                className="px-4 py-2 text-sm font-medium border border-[#1B2D4F] text-[#1B2D4F] rounded-lg hover:bg-[#1B2D4F] hover:text-white transition-colors disabled:opacity-50">
-                {checking ? 'Checking…' : 'Check Availability'}
-              </button>
-              {available === true && <span className="text-green-600 text-sm font-medium">✓ Available</span>}
-              {available === false && <span className="text-red-600 text-sm font-medium">✗ Already booked — will be waitlisted</span>}
+            <div className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium ${
+              checking ? 'bg-gray-50 text-gray-500'
+              : available === true ? 'bg-green-50 text-green-700'
+              : available === false ? 'bg-red-50 text-red-700'
+              : 'bg-gray-50 text-gray-400'
+            }`}>
+              {checking ? '⏳ Checking availability…'
+                : available === true ? '✓ Available — this slot is free'
+                : available === false ? '✗ Already booked for this date & session'
+                : 'Select date & session to check availability'}
             </div>
           )}
         </div>
@@ -259,36 +341,37 @@ export default function CreateBookingPage() {
             </select>
           </div>
 
-          <div className="flex items-center gap-6">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" checked={form.dj_requested}
-                onChange={e => setForm(p => ({ ...p, dj_requested: e.target.checked }))}
-                className="w-4 h-4 text-[#C9A052]" />
-              <span className="text-sm text-gray-700">DJ Add-on</span>
-            </label>
-            {form.dj_requested && (
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-500">Price:</span>
-                <input type="number" min="0" value={form.dj_price}
-                  onChange={e => setForm(p => ({ ...p, dj_price: e.target.value }))}
-                  className="w-24 px-2 py-1 border border-gray-300 rounded text-sm" />
-              </div>
-            )}
-          </div>
-
-          <div className="flex items-center gap-6">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" checked={form.cameraman_requested}
-                onChange={e => setForm(p => ({ ...p, cameraman_requested: e.target.checked }))}
-                className="w-4 h-4 text-[#C9A052]" />
-              <span className="text-sm text-gray-700">Cameraman Add-on</span>
-            </label>
-            {form.cameraman_requested && (
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-500">Price:</span>
-                <input type="number" min="0" value={form.cameraman_price}
-                  onChange={e => setForm(p => ({ ...p, cameraman_price: e.target.value }))}
-                  className="w-24 px-2 py-1 border border-gray-300 rounded text-sm" />
+          {/* Add-on services defined on this space */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Additional Services</label>
+            {!form.product_id ? (
+              <p className="text-xs text-gray-400">Select a space first to see its available services.</p>
+            ) : services.length === 0 ? (
+              <p className="text-xs text-gray-400">No add-on services configured for this space. Add them on the space's Products page.</p>
+            ) : (
+              <div className="space-y-2">
+                {services.map(s => {
+                  const sel = svcSel[s.id];
+                  return (
+                    <div key={s.id} className="flex items-center justify-between gap-3 border border-gray-100 rounded-lg px-3 py-2">
+                      <label className="flex items-center gap-2 cursor-pointer flex-1">
+                        <input type="checkbox" checked={sel?.checked ?? false}
+                          onChange={() => toggleService(s.id, s.price)}
+                          className="w-4 h-4 text-[#C9A052]" />
+                        <span className="text-sm text-gray-700">{s.service_name}</span>
+                        <span className="text-xs text-gray-400 capitalize">· {String(s.service_type).replace('_', ' ')}</span>
+                      </label>
+                      {sel?.checked && (
+                        <div className="flex items-center gap-1">
+                          <span className="text-sm text-gray-500">$</span>
+                          <input type="number" min="0" step="0.01" value={sel.price}
+                            onChange={e => setServicePrice(s.id, e.target.value)}
+                            className="w-24 px-2 py-1 border border-gray-300 rounded text-sm" />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -310,6 +393,22 @@ export default function CreateBookingPage() {
             <label className="block text-sm font-medium text-gray-700 mb-1">Internal Notes</label>
             <textarea rows={2} value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#C9A052] resize-none" />
+          </div>
+
+          {/* Staff coupon (B5) */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Discount Coupon <span className="text-gray-400 font-normal">(optional)</span></label>
+            <div className="flex gap-2">
+              <input type="text" value={form.coupon_code}
+                onChange={e => { setForm(p => ({ ...p, coupon_code: e.target.value })); setCouponInfo(null); setCouponMsg(''); }}
+                placeholder="Enter staff coupon code"
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#C9A052] uppercase" />
+              <button type="button" onClick={applyCoupon}
+                className="px-5 py-2 border border-[#1B2D4F] text-[#1B2D4F] rounded-lg text-sm font-medium hover:bg-[#1B2D4F] hover:text-white transition-colors">
+                Apply
+              </button>
+            </div>
+            {couponMsg && <p className={`text-xs mt-1 ${couponMsg.startsWith('✓') ? 'text-green-600' : 'text-red-500'}`}>{couponMsg}</p>}
           </div>
         </div>
 
@@ -372,17 +471,56 @@ export default function CreateBookingPage() {
           <div className="p-3 bg-red-50 text-red-700 rounded-lg text-sm">{message}</div>
         )}
 
-        <div className="flex gap-3">
-          <button type="submit" disabled={loading}
-            className="bg-[#C9A052] hover:bg-[#b89140] text-white font-semibold px-6 py-2.5 rounded-lg transition-colors disabled:opacity-50">
+        <div className="flex gap-3 items-center">
+          <button type="submit" disabled={loading || available === false}
+            className="bg-[#C9A052] hover:bg-[#b89140] text-white font-semibold px-6 py-2.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
             {loading ? 'Creating…' : 'Create Booking'}
           </button>
+          {available === false && (
+            <button type="button" onClick={() => { setWaitlistMsg(''); setShowWaitlist(true); }}
+              className="bg-amber-500 hover:bg-amber-600 text-white font-semibold px-5 py-2.5 rounded-lg text-sm transition-colors">
+              ⏳ Add to Waiting List
+            </button>
+          )}
           <button type="button" onClick={() => router.back()}
             className="px-6 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
             Cancel
           </button>
         </div>
       </form>
+
+      {/* Waiting-list overlay (shown when the chosen slot is unavailable) */}
+      {showWaitlist && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setShowWaitlist(false)}>
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6" onClick={e => e.stopPropagation()}>
+            <h2 className="text-lg font-bold text-[#1B2D4F] mb-1">Slot unavailable — add to waiting list?</h2>
+            <p className="text-sm text-gray-500 mb-4">
+              {selectedSpace?.name} is already booked for {form.booking_date} ({form.session_type}). Register <strong>{form.client_name || 'this customer'}</strong> on the waiting list — they'll be notified if a spot opens (max {3} per slot).
+            </p>
+            {(!form.client_name || (!form.client_email && !form.client_phone)) ? (
+              <div className="bg-amber-50 text-amber-700 text-sm rounded-lg p-3">Enter the client's name and at least a phone or email above first, then reopen this.</div>
+            ) : (
+              <>
+                <label className="block text-xs text-gray-500 mb-1">Notify the customer via</label>
+                <select value={waitlistChannel} onChange={e => setWaitlistChannel(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-[#C9A052]">
+                  <option value="email">📧 Email</option>
+                  <option value="whatsapp">💬 WhatsApp</option>
+                  <option value="both">📧💬 Both</option>
+                </select>
+                {waitlistMsg && <div className={`mb-3 p-2 rounded text-sm ${waitlistMsg.startsWith('✓') ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>{waitlistMsg}</div>}
+                <div className="flex gap-2">
+                  <button onClick={addToWaitlist} disabled={waitlistBusy}
+                    className="flex-1 bg-[#C9A052] hover:bg-[#b89140] text-white font-medium py-2.5 rounded-lg text-sm disabled:opacity-50">
+                    {waitlistBusy ? 'Adding…' : 'Add to Waiting List'}
+                  </button>
+                  <button onClick={() => setShowWaitlist(false)} className="px-5 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-600">Cancel</button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

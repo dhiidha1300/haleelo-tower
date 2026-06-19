@@ -29,6 +29,22 @@ export default function PurchaseOrderDetailPage() {
 
   useEffect(() => { fetchPO(); }, [id]);
 
+  const handlePdf = async () => {
+    const res = await purchaseOrdersAPI.pdf(parseInt(id));
+    window.open(window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' })), '_blank');
+  };
+
+  const handleWhatsapp = async () => {
+    if (!confirm('Send this purchase order to the vendor over WhatsApp?')) return;
+    try {
+      const res = await purchaseOrdersAPI.sendWhatsapp(parseInt(id));
+      setMessage('✓ ' + (res.data?.message || 'Sent over WhatsApp'));
+      setTimeout(() => setMessage(''), 3000);
+    } catch (err: any) {
+      setMessage('✗ ' + (err.response?.data?.message || 'WhatsApp send failed'));
+    }
+  };
+
   const handleStatus = async (newStatus: string) => {
     try {
       await purchaseOrdersAPI.updateStatus(parseInt(id), newStatus);
@@ -51,7 +67,19 @@ export default function PurchaseOrderDetailPage() {
           <h1 className="text-3xl font-bold text-[#1B2D4F]">{po.po_code}</h1>
           <p className="text-gray-500 text-sm">{po.vendor?.name}</p>
         </div>
-        <span className={`px-3 py-1.5 rounded-lg text-sm font-semibold ${STATUS_STYLES[po.status]}`}>{po.status}</span>
+        <div className="flex items-center gap-3">
+          <button onClick={handlePdf}
+            className="border border-[#1B2D4F] text-[#1B2D4F] hover:bg-[#1B2D4F] hover:text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+            📄 Export PDF
+          </button>
+          {po.vendor?.phone && (
+            <button onClick={handleWhatsapp}
+              className="border border-green-500 text-green-600 hover:bg-green-500 hover:text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+              💬 WhatsApp
+            </button>
+          )}
+          <span className={`px-3 py-1.5 rounded-lg text-sm font-semibold ${STATUS_STYLES[po.status]}`}>{po.status}</span>
+        </div>
       </div>
 
       {message && <div className={`p-3 rounded-lg text-sm ${message.startsWith('✓') ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>{message}</div>}

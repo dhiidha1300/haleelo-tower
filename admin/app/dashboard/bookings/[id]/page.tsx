@@ -44,6 +44,10 @@ interface Booking {
   extra_services: any[] | null;
   dj_requested: boolean;
   cameraman_requested: boolean;
+  discount_percent: string | null;
+  discount_amount: string | null;
+  discount_by: string | null;
+  coupon_code: string | null;
   status_logs: StatusLog[];
   created_by: { name: string } | null;
   created_at: string;
@@ -233,16 +237,20 @@ export default function BookingDetailPage() {
                 <p className="text-sm text-gray-400 italic">No catering package selected.</p>
               )}
 
-              {/* Add-on services */}
-              {(booking.dj_requested || booking.cameraman_requested || (booking.extra_services?.length ?? 0) > 0) && (
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {booking.dj_requested && <span className="text-xs bg-[#1B2D4F] text-white px-3 py-1 rounded-full">🎧 DJ Service</span>}
-                  {booking.cameraman_requested && <span className="text-xs bg-[#1B2D4F] text-white px-3 py-1 rounded-full">🎥 Cameraman</span>}
-                  {booking.extra_services?.map((ex: any, i: number) => (
-                    <span key={i} className="text-xs bg-[#1B2D4F] text-white px-3 py-1 rounded-full">
-                      {typeof ex === 'string' ? ex : (ex?.name ?? 'Extra service')}
-                    </span>
-                  ))}
+              {/* Add-on services (with prices) */}
+              {((booking.extra_services?.length ?? 0) > 0 || booking.dj_requested || booking.cameraman_requested) && (
+                <div className="mt-3">
+                  <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Additional Services</p>
+                  <ul className="space-y-1">
+                    {booking.extra_services?.map((ex: any, i: number) => (
+                      <li key={i} className="text-sm text-gray-700 flex justify-between">
+                        <span><span className="text-[#C9A052] mr-2">+</span>{typeof ex === 'string' ? ex : (ex?.name ?? 'Service')}</span>
+                        {typeof ex === 'object' && ex?.price != null && <span className="text-gray-500">${parseFloat(ex.price).toFixed(2)}</span>}
+                      </li>
+                    ))}
+                    {booking.dj_requested && <li className="text-sm text-gray-700">🎧 DJ Service</li>}
+                    {booking.cameraman_requested && <li className="text-sm text-gray-700">🎥 Cameraman</li>}
+                  </ul>
                 </div>
               )}
             </div>
@@ -254,10 +262,25 @@ export default function BookingDetailPage() {
             <div className="space-y-2 text-sm">
               <div className="flex justify-between"><span className="text-gray-500">Base Price</span><span className="font-medium">${booking.base_price}</span></div>
               {booking.catering_package && <div className="flex justify-between"><span className="text-gray-500">Catering ({booking.catering_package.name})</span><span className="font-medium">${booking.catering_price}</span></div>}
+              {booking.extra_services?.map((ex: any, i: number) => (
+                typeof ex === 'object' && ex?.price != null ? (
+                  <div key={i} className="flex justify-between"><span className="text-gray-500">{ex.name}</span><span className="font-medium">${parseFloat(ex.price).toFixed(2)}</span></div>
+                ) : null
+              ))}
               {booking.dj_requested && <div className="flex justify-between"><span className="text-gray-500">DJ</span><span className="font-medium">${booking.dj_price}</span></div>}
               {booking.cameraman_requested && <div className="flex justify-between"><span className="text-gray-500">Cameraman</span><span className="font-medium">${booking.cameraman_price}</span></div>}
+              {parseFloat(booking.discount_amount ?? '0') > 0 && (
+                <div className="flex justify-between text-green-700">
+                  <span>
+                    Discount ({parseFloat(booking.discount_percent ?? '0')}%)
+                    {booking.discount_by && <span className="text-xs text-gray-400"> · by {booking.discount_by}{booking.coupon_code ? ` (${booking.coupon_code})` : ''}</span>}
+                  </span>
+                  <span className="font-medium">− ${booking.discount_amount}</span>
+                </div>
+              )}
               <div className="border-t pt-2 flex justify-between font-semibold text-[#1B2D4F]">
-                <span>Total</span><span>${booking.total_price}</span>
+                <span>{parseFloat(booking.discount_amount ?? '0') > 0 ? 'Net Total' : 'Total'}</span>
+                <span>${(parseFloat(booking.total_price) - parseFloat(booking.discount_amount ?? '0')).toFixed(2)}</span>
               </div>
               <div className="flex justify-between text-xs">
                 <span className="text-gray-400">Payment Status</span>

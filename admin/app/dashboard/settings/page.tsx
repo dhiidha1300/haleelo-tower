@@ -10,6 +10,7 @@ import { SessionTimeSettings } from '@/components/settings/SessionTimeSettings';
 import { PaymentTermsSettings } from '@/components/settings/PaymentTermsSettings';
 import { WhatsAppSettings } from '@/components/settings/WhatsAppSettings';
 import { EmailSettings } from '@/components/settings/EmailSettings';
+import { CommunicationsSettings } from '@/components/settings/CommunicationsSettings';
 import { WorkingHoursSettings } from '@/components/settings/WorkingHoursSettings';
 import { FiscalYearSettings } from '@/components/settings/FiscalYearSettings';
 
@@ -21,6 +22,7 @@ type SettingCategory =
   | 'payment_terms'
   | 'whatsapp'
   | 'email'
+  | 'communications'
   | 'working_hours'
   | 'fiscal_year';
 
@@ -33,6 +35,7 @@ const ALL_CATEGORIES = [
   { id: 'payment_terms', label: 'Payment Terms',     icon: '💳',  requiredPermission: 'view-settings' },
   { id: 'whatsapp',      label: 'WhatsApp API',      icon: '💬',  requiredPermission: 'manage-whatsapp-settings' },
   { id: 'email',         label: 'Email Settings',    icon: '📧',  requiredPermission: 'manage-email-settings' },
+  { id: 'communications',label: 'Communications',    icon: '📨',  requiredPermission: 'manage-settings' },
   { id: 'working_hours', label: 'Working Hours',     icon: '⏰',  requiredPermission: 'view-settings' },
   { id: 'fiscal_year',   label: 'Fiscal Year',       icon: '📅',  requiredPermission: 'manage-settings' },
 ];
@@ -83,6 +86,8 @@ export default function SettingsPage() {
         return <WhatsAppSettings settings={settings} onUpdate={loadSettings} />;
       case 'email':
         return <EmailSettings settings={settings} onUpdate={loadSettings} />;
+      case 'communications':
+        return <CommunicationsSettings settings={settings} onUpdate={loadSettings} />;
       case 'working_hours':
         return <WorkingHoursSettings settings={settings} onUpdate={loadSettings} />;
       case 'fiscal_year':

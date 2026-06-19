@@ -67,9 +67,10 @@ export default function LoginPage() {
         <div className="absolute bottom-0 left-0 w-96 h-96 bg-[#C9A052] rounded-full opacity-5 translate-y-1/2 -translate-x-1/2"></div>
 
         <div className="relative z-10 text-center">
-          <div className="mb-8">
-            <h1 className="text-6xl font-bold text-[#C9A052] mb-4">Haleelo</h1>
-            <p className="text-2xl text-gray-300">Tower Admin</p>
+          <div className="mb-8 flex flex-col items-center">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo-full-light.svg" alt="Haleelo Tower" className="h-14 w-auto mb-3" />
+            <p className="text-xl text-gray-300">Tower Admin</p>
           </div>
 
           <div className="bg-white/10 backdrop-blur-md rounded-lg p-8 mt-12 border border-white/20">
@@ -101,8 +102,9 @@ export default function LoginPage() {
       {/* Right Side - Login Form */}
       <div className="w-full lg:w-1/2 flex flex-col justify-center items-center p-8 bg-gray-50">
         <div className="w-full max-w-md">
-          <div className="lg:hidden mb-8 text-center">
-            <h1 className="text-4xl font-bold text-[#1B2D4F] mb-2">Haleelo</h1>
+          <div className="lg:hidden mb-8 flex flex-col items-center">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo-full.svg" alt="Haleelo Tower" className="h-11 w-auto mb-2" />
             <p className="text-gray-600">Tower Admin Portal</p>
           </div>
 

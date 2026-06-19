@@ -2,7 +2,7 @@
 # Platform Implementation Plan
 Version 3.2  |  June 2026
 Confidential — Build Specification for Claude Code CLI
-*(v3.2 adds §19.4 — Operating Account Creation (E7). v3.1 added Section 19 — Admin Panel Enhancements and Section 20 — Deployment Runbook, on top of the completed v3.0 Phase 1–3 build.)*
+*(v3.2 adds §19.4 — Operating Account Creation (E7) — and Section 21 — Post-Pilot Improvement Backlog (B1–B9, Planned). v3.1 added Section 19 — Admin Panel Enhancements and Section 20 — Deployment Runbook, on top of the completed v3.0 Phase 1–3 build.)*
 
 |  |  |
 | --- | --- |
@@ -1528,6 +1528,131 @@ WHATSAPP_* =<credentials>     # required for WhatsApp delivery
 3. Record a payment → trial balance balanced.
 4. Horizon dashboard shows no failed jobs; `php artisan schedule:list` shows all scheduled commands.
 
+# SECTION 21 — POST-PILOT IMPROVEMENT BACKLOG
+*(Manager & Accountant review, June 2026. Status: Planned — added under v3.2 without a version bump per client instruction. Each item below carries the design decisions confirmed during planning.)*
+
+## 21.0 Backlog Register
+
+| # | Improvement | Area | Access | Status |
+| --- | --- | --- | --- | --- |
+| B1 | Edit + activate/deactivate operating accounts | Accounting | Super Admin, Admin | Built |
+| B2 | Purchase Order PDF (vendor-facing) | Procurement | per view-perms | Built |
+| B3 | Invoice resend | Finance | manage-invoices/send-invoice | Built |
+| B4 | Document delivery via WhatsApp + per-category channel settings | Comms | Super Admin (settings) | Built |
+| B5 | Staff coupon codes (booking discounts, contra-revenue 3090) | Bookings/Finance | Super Admin manages | Built |
+| B6 | Trial Balance — date range, opening/closing, comparison | Accounting | view-financial-reports | Built |
+| B7 | Manual Journal — auto-balance helper | Accounting | create-journal-entries | Built |
+| B8 | Auto account reconciliation (statement upload) | Accounting | manage-accounts | Built |
+| B9 | Animated calendar + click/drag to create booking | Bookings | view/create-booking | Built |
+| B10 | Waiting-list management (manual + on-no-availability) | Bookings | manage-waiting-list (admin/ops) | Built |
+| B11 | Maintenance management (internal/outsourced, before/after report) | Operations/Finance | add: admin/finance/ops · manage: admin/ops | Built |
+| B12 | Internal SMTP transport + managed email templates | Comms/Settings | Super Admin, Admin | Built |
+
+## 21.1 Operating Account Management (B1)
+Building on §19.4 (account creation).
+- **Edit:** Super Admin & Admin can edit an existing operating account's **name, account identifier (number), and notes**. The linked **Chart-of-Accounts code is immutable** (never editable from here).
+- **Active/Inactive:** accounts carry an `active` flag. **Only active accounts appear in selection dropdowns** (payments, transfers, expenses, electricity, payroll payout). The Accounts page lists all accounts with a status badge + active/inactive filter and a toggle.
+- **Deactivation with a balance:** if the account's computed balance ≠ 0, deactivation **prompts for a destination account** and posts a **balanced inter-account transfer journal** (debit destination / credit this account) to zero it, then marks it inactive — so the ledger stays balanced. Zero-balance accounts deactivate directly. Reactivation simply re-enables selection.
+- **Access:** `role:super_admin|admin`. All edits, (de)activations and sweep-transfers are audit-logged.
+
+## 21.2 Purchase Order PDF (B2)
+- Branded, printable PO PDF mirroring the invoice PDF: building header, **vendor details**, PO code & date, expected delivery date, line items (description, qty, unit price, line total), subtotal/total, and notes/terms.
+- Endpoint `GET /purchase-orders/{po}/pdf`; **Export PDF** button on the PO detail page. Intended to be printed/handed or sent to the vendor (see B4).
+
+## 21.3 Invoice Resend (B3)
+- A **Resend** action re-delivers an already-issued invoice through the configured channel(s) (see B4). It **does not re-post the AR journal** — only the first send posts accounting. Tracks `last_sent_at` and a resend counter; audit-logged. Available for invoices in `sent / partial / overdue`.
+
+## 21.4 Document Delivery via WhatsApp + Channel Settings (B4)
+- Send documents over WhatsApp using the existing Twilio WhatsApp integration. PDFs are delivered as a **media message using the document's signed S3 URL** (private bucket; the signed link outlives delivery).
+- **Sendable documents:** Invoices (issued + overdue reminders), Purchase Orders (to vendors), Payment receipts, Booking confirmations, and general notices/announcements.
+- **Settings — per-category channel preference** (new keys): `comm_channel_invoicing`, `comm_channel_receipts`, `comm_channel_notices` — each ∈ {`email`, `whatsapp`, `both`}. The relevant send/resend flows fan out to the selected channel(s).
+- **Templates:** business-initiated WhatsApp messages require **Meta-approved templates**. The client creates the templates in Meta Business Manager using §21.4.1; template *names* are referenced from config so code stays stable.
+
+### 21.4.1 WhatsApp Templates to create in Meta Business Manager
+Create each as language **English**, category **UTILITY** (except `general_notice` → **MARKETING** if used for promotions). Templates that carry a PDF use a **Header → Document**; the body variables are positional `{{n}}`.
+
+- **`invoice_issued`** — Header: Document (the invoice PDF). Body:
+  `Hello {{1}}, your invoice {{2}} from Haleelo Tower is ready. Amount due: {{3}}, due by {{4}}. Thank you for your business.`
+  (1 = client name, 2 = invoice code, 3 = amount, 4 = due date)
+- **`invoice_overdue`** — Header: none. Body:
+  `Reminder: invoice {{1}} for {{2}} is overdue. Outstanding balance: {{3}} (was due {{4}}). Please arrange payment at your earliest convenience. — Haleelo Tower`
+  (1 = invoice code, 2 = client/period, 3 = balance, 4 = due date)
+- **`purchase_order`** — Header: Document (the PO PDF). Body:
+  `Hello {{1}}, Haleelo Tower has issued Purchase Order {{2}} dated {{3}}, total {{4}}. Please find the PO attached.`
+  (1 = vendor name, 2 = PO code, 3 = date, 4 = total)
+- **`payment_receipt`** — Header: Document (the voucher PDF). Body:
+  `Thank you {{1}}. We've received your payment of {{2}} on {{3}} (ref {{4}}). A receipt is attached. — Haleelo Tower`
+  (1 = payer name, 2 = amount, 3 = date, 4 = reference)
+- **`booking_confirmation`** — Header: Document (booking confirmation PDF). Body:
+  `Hi {{1}}, your booking {{2}} at Haleelo Tower is confirmed for {{3}} ({{4}}) in {{5}}. Total: {{6}}.`
+  (1 = client, 2 = booking code, 3 = date, 4 = session, 5 = space, 6 = total)
+- **`general_notice`** — Header: none. Body:
+  `Haleelo Tower notice — {{1}}: {{2}}`
+  (1 = subject, 2 = message)
+- **`waitlist_added`** — Header: none. Body:
+  `Hello {{1}}, you're on the waiting list for {{2}} on {{3}} ({{4}} session), position {{5}}. We'll notify you if a spot opens. — Haleelo Tower`
+  (1 = client, 2 = space, 3 = date, 4 = session, 5 = position)
+- **`waitlist_slot_open`** — Header: none. Body:
+  `Good news {{1}}! A spot has opened for {{2}} on {{3}} ({{4}} session). Please contact Haleelo Tower to confirm your booking.`
+  (1 = client, 2 = space, 3 = date, 4 = session)
+
+## 21.5 Staff Coupon Codes — Booking Discounts (B5)
+- Each **staff login user** has a unique **coupon code** with a **fixed discount %** set within their **role cap**: Admin ≤ 50%, Operations ≤ 25%, Finance ≤ 30%. **Super Admin** can set any % and manages (create/edit/disable/regenerate) all codes.
+- **Scope: bookings only.** Applying a valid, active code during booking creation discounts that booking's invoice.
+- **Accounting — contra-revenue method.** The invoice records **gross revenue** at full price; the discount posts as a separate debit to a new contra-revenue account **`3090 – Sales Discounts`** (a revenue-type, debit-normal account that nets down revenue on the P&L). Example for a $100 booking at 20% off:
+  - Dr Accounts Receivable **$80**, Dr Sales Discounts (3090) **$20**, Cr Revenue **$100** — debits = credits = $100. The customer owes only the **net $80**; on payment, Dr Cash $80 / Cr AR $80.
+  - This keeps the books balanced at every step **and** makes total discounts given reportable (overall and, via the stored coupon/owner, per employee). No accounting-engine change is needed — `3090` is just a revenue account carrying debits.
+- The applied coupon and its owning user are recorded on the booking/invoice for attribution. Validation enforces the owner's role cap server-side; disabled/expired codes are rejected. All applications are audit-logged.
+- **COA addition:** seed `3090 – Sales Discounts` (type `revenue`, system account).
+
+## 21.6 Trial Balance — Date Range, Opening/Closing & Comparison (B6)
+- **From/To** date pickers. For the selected range, each account shows: **opening balance** (cumulative before *From*), **period movement** (debits/credits within range), and **closing balance** (as of *To*). Column totals must balance.
+- **Comparison mode:** two independent ranges (e.g., **May vs June**, **Q1 2025 vs Q1 2026**) shown side-by-side with **variance** (amount and %). Exportable to PDF/Excel.
+
+## 21.7 Manual Journal Entry — Auto-Balance Helper (B7)
+- In the manual journal form, typing an amount on one side **auto-fills the opposite side** so the entry balances (the engine already rejects unbalanced entries). For a two-line entry the counter-line mirrors the amount; for multi-line entries the remaining empty line is filled with the running difference. Server-side balance validation is unchanged.
+
+## 21.8 Auto Account Reconciliation (B8)
+- For a chosen account, the user **uploads its statement** (ZAAD / Edahab / bank) as **CSV or Excel** (PDF supported on a **best-effort** basis — layouts vary). 
+- The system matches statement rows to recorded `AccountTransactions` by **amount + date (± tolerance) + reference**, then presents three buckets: **matched** (marked reconciled), **in statement but not in books** (offer to create the missing entry), and **in books but not on statement** (flag for review). A summary compares **statement closing balance vs book balance**.
+- Per-provider **column mapping** is configurable. CSV/Excel are strongly preferred for accuracy.
+
+## 21.10 Waiting-List Management (B10)
+Replaces the old auto/self-service waiting list with staff-managed control (Super Admin, Admin, Operations).
+- **Registration:** manual from the Waiting List page, **or** prompted automatically when a booking can't be made because the slot is taken — the booking form shows a "Slot unavailable — add to waiting list?" overlay pre-filled with the customer + slot.
+- **Limit:** **3 per slot** (space + date + session; configurable via `waitlist_limit`). Operations is hard-capped; **Super Admin/Admin can override**.
+- **Notifications (per-entry channel — email / WhatsApp / both):** a confirmation on joining (`waitlist_added`), and a "spot opened" message (`waitlist_slot_open`) when a booked slot is cancelled/rejected — the first person in line (by position) is notified.
+- **Conversion:** staff convert a waiting entry into a booking with one click (creates the booking at the space's base price; the slot must be free). Marks the entry `converted` and links the booking.
+- **Cancellation:** staff can cancel any entry.
+- **Auto-expiry:** a daily scheduled command (`waitlist:expire-past`) marks entries `expired` once their slot date has passed.
+- **Statuses:** `waiting → converted | cancelled | expired`.
+
+## 21.9 Calendar Enhancements (B9)
+- Polished, **animated** calendar (navy/gold theme, smooth transitions, event hover/preview, status-color legend).
+- **Create from calendar:** single-click a day opens the new-booking form with the **date prefilled**; **click-drag** a time range prefills date + **start/end time**, then opens the form.
+
+## 21.11 Maintenance Management (B11)
+End-to-end maintenance tracking with photo evidence and a printable before/after report; outsourced jobs feed straight into accounting.
+- **Logging (add):** Admin, Finance and Operations can log a request — title, **category** (AC, electrical, cleaning, plumbing, equipment, other), **priority** (low/normal/high), description, and **location** = either a **Space** (from Products) **or** a free-text area (e.g. "Lobby", "Rooftop"), with an optional **tenant**. **Multiple "before" photos** can be attached at logging time.
+- **Handling (manage — Admin & Operations only):** each open request is routed one of two ways:
+  - **Internal** — assign an **employee**; status → `in_progress`.
+  - **Outsourced** — pick a **vendor** + **cost** + bill date; the system creates a linked **Vendor Bill** (expense posted to COA **4020 Maintenance & Repairs**, credit **AP 2001** via `VendorBillService`) so the cost flows into AP/accounting. The request stores `vendor_bill_id`; status → `in_progress`.
+- **Resolution:** Admin/Operations add **resolution notes** + **multiple "after" photos** and mark `resolved` (stamps `resolved_at`). Any request can be `cancelled`.
+- **Report:** branded, printable/viewable **PDF** (`GET /maintenance/{id}/report`) — details, status, outsource cost + linked vendor bill code, "Reported Problem (Before)" notes + photo grid, and "Resolution (After)" notes + photo grid. Photos embedded as base64 data URIs (DomPDF, S3-stored keys read raw).
+- **Storage:** photos upload to S3 (private, signed URLs) under `maintenance/{id}/{before|after}`.
+- **Statuses:** `open → in_progress → resolved | cancelled`. **Codes:** `MR-YYYY-####`.
+- **Access:** add = `role:super_admin|admin|finance|operations`; assign/outsource/resolve/cancel = `role:super_admin|admin|operations`. All actions audit-logged.
+
+## 21.12 Internal SMTP Transport + Managed Email Templates (B12)
+Replaces direct Resend-only sending with an internal SMTP mail server and a fully admin-managed email template system.
+- **Transport:** all mail routes through a single `MailService` entry point. The preferred transport is **internal SMTP** (Laravel's native Symfony mailer, configured **at runtime from system settings** — no `config/mail.php` needed), with **Resend kept as a selectable fallback**. `MailService::effectiveDriver()` picks the preferred driver, then falls back to the other if the primary isn't configured.
+- **SMTP settings (Settings → Email → Mail Server):** `mail_driver` (smtp|resend), `smtp_host`, `smtp_port`, `smtp_encryption` (tls/ssl/none → scheme smtp/smtps), `smtp_username`, `smtp_password`, shared `mail_from_name` / `mail_from_email` / `mail_reply_to`. A **Send Test** button verifies delivery and reports the transport used.
+- **Security:** secret keys (`smtp_password`, `resend_api_key`) are **encrypted at rest** via Laravel `Crypt`/APP_KEY (transparent encrypt-on-set / decrypt-on-get in `SystemSetting`, with legacy-plaintext fallback). Secrets are **never returned to the browser** (API exposes only `*_set` booleans), **never written to the audit log** (logged as `••••••`), and a **blank submission means "keep current"**. Stored template HTML is sanitised (strip `<script>`, inline `on*=` handlers, `javascript:` URIs); variables are HTML-escaped (except `*_url`).
+- **Templates (Settings → Email → Templates):** `email_templates` table (`key`, `name`, `subject`, `body_html`, `variables` json, `is_system`, `is_active`). The **8 system templates** (password_reset, user_invite, invoice, payslip, booking_notification, waitlist, lease_renewal, test) are seeded from `App\Support\EmailTemplates::defaults()` — the single source of truth used both by the seeder and as a runtime fallback in `TemplateRenderer`. System templates are **edit-only** (cannot be deleted or deactivated); admins can also **create/edit/delete custom templates**.
+- **Rendering:** `TemplateRenderer` substitutes `{{variable}}` placeholders into subject + body, then injects the (editable) body into a **locked navy/gold brand frame** (header w/ building name + footer) so layout can't be broken. `EmailService` builds the per-email data set and calls renderer + `MailService`.
+- **Editor (frontend):** master–detail manager with a dependency-free **rich text editor** (contentEditable toolbar: bold/italic/H2/lists/links + **Visual ⇄ HTML toggle**), **insertable variable chips**, **live preview** (iframe of the framed HTML with sample data via `POST /email-templates/{id}/preview`), and **send-test** per template.
+- **API:** `GET/POST/PUT/DELETE /email-templates`, `POST /email-templates/{id}/preview`, `POST /email-templates/{id}/test` (gated `role:super_admin|admin`). `POST /email/test` updated to use the new transport.
+
 # END OF DOCUMENT
-Haleelo Tower — Platform Implementation Plan v3.1
+Haleelo Tower — Platform Implementation Plan v3.2
 June 2026 | Confidential

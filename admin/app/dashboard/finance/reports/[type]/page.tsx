@@ -12,6 +12,7 @@ const TITLES: Record<string, string> = {
   'general-ledger': 'General Ledger', 'revenue': 'Revenue Report', 'expense': 'Expense Report',
   'bookings': 'Bookings Report', 'payments': 'Payment Report', 'invoice-analysis': 'Invoice Analysis',
   'electricity': 'Electricity Report', 'occupancy': 'Occupancy Report', 'payroll-summary': 'Payroll Summary',
+  'discounts': 'Discounts by Employee',
 };
 
 // which filter controls each report needs
@@ -20,6 +21,7 @@ const FILTERS: Record<string, ('from_to' | 'as_of' | 'account' | 'partner')[]> =
   'general-ledger': ['account', 'from_to'], 'partner-ledger': ['partner'],
   'revenue': ['from_to'], 'expense': ['from_to'], 'bookings': ['from_to'],
   'payments': ['from_to'], 'invoice-analysis': ['from_to'], 'electricity': ['from_to'], 'occupancy': ['from_to'],
+  'discounts': ['from_to'],
   'payroll-summary': [],
 };
 
@@ -278,6 +280,20 @@ function ReportBody({ type, data }: { type: string; data: any }) {
       <div className="space-y-4">
         <GenericTable headers={['By Type', 'Count', 'Total']} rows={data.by_type.map((r: any) => [r.type, r.count, money(r.total)])} />
         <GenericTable headers={['By Status', 'Count', 'Total']} rows={data.by_status.map((r: any) => [r.status, r.count, money(r.total)])} />
+      </div>
+    );
+  }
+
+  if (type === 'discounts') {
+    return (
+      <div className="space-y-4">
+        <div className="grid grid-cols-2 gap-3 max-w-md">
+          <div className="bg-[#1B2D4F] text-white rounded-lg p-4"><p className="text-xs text-white/70">Total Discounts Given</p><p className="text-xl font-bold">{money(data.total_discount)}</p></div>
+          <div className="bg-white shadow-sm rounded-lg p-4"><p className="text-xs text-gray-500">Discounted Invoices</p><p className="text-xl font-bold text-[#1B2D4F]">{data.total_count}</p></div>
+        </div>
+        <GenericTable
+          headers={['Employee', 'Role', 'Coupon', 'Invoices', 'Gross', 'Total Discount']}
+          rows={(data.rows ?? []).map((r: any) => [r.employee, (r.role ?? '').replace('_', ' '), r.code ?? '—', r.count, money(r.total_gross), money(r.total_discount)])} />
       </div>
     );
   }

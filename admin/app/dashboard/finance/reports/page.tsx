@@ -23,6 +23,7 @@ const REPORTS = [
     { type: 'electricity',      label: 'Electricity Report',desc: 'Meter readings and charges',               icon: '⚡' },
     { type: 'occupancy',        label: 'Occupancy Report',  desc: 'Space utilisation per period',             icon: '🏢' },
     { type: 'payroll-summary',  label: 'Payroll Summary',   desc: 'Gross, deductions and net by department',  icon: '💸' },
+    { type: 'discounts',        label: 'Discounts by Employee', desc: 'Coupon discounts given, per staff member', icon: '🎟️' },
   ]},
 ];
 

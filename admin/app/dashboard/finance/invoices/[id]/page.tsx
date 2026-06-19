@@ -54,6 +54,31 @@ export default function InvoiceDetailPage() {
     } finally { setBusy(false); }
   };
 
+  const handleResend = async () => {
+    if (!confirm('Resend this invoice to the client? (No accounting changes — just re-delivery.)')) return;
+    setBusy(true);
+    try {
+      await invoicesAPI.resend(parseInt(id));
+      fetchInvoice();
+      setMessage('✓ Invoice resent');
+      setTimeout(() => setMessage(''), 3000);
+    } catch (err: any) {
+      setMessage('✗ ' + (err.response?.data?.message || 'Failed to resend'));
+    } finally { setBusy(false); }
+  };
+
+  const handleWhatsapp = async () => {
+    if (!confirm('Send this invoice to the client over WhatsApp?')) return;
+    setBusy(true);
+    try {
+      const res = await invoicesAPI.sendWhatsapp(parseInt(id));
+      setMessage('✓ ' + (res.data?.message || 'Sent over WhatsApp'));
+      setTimeout(() => setMessage(''), 3000);
+    } catch (err: any) {
+      setMessage('✗ ' + (err.response?.data?.message || 'WhatsApp send failed'));
+    } finally { setBusy(false); }
+  };
+
   const handlePdf = async () => {
     const res = await invoicesAPI.pdf(parseInt(id));
     const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
@@ -110,6 +135,18 @@ export default function InvoiceDetailPage() {
             ✉ Send Invoice
           </button>
         )}
+        {hasPermission('send-invoice') && ['sent','partial','overdue'].includes(invoice.status) && (
+          <button onClick={handleResend} disabled={busy}
+            className="border border-[#1B2D4F] text-[#1B2D4F] hover:bg-[#1B2D4F] hover:text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50">
+            ↻ Resend{invoice.resend_count ? ` (${invoice.resend_count})` : ''}
+          </button>
+        )}
+        {hasPermission('send-invoice') && ['sent','partial','overdue'].includes(invoice.status) && (invoice.bill_to_phone || invoice.tenant?.phone) && (
+          <button onClick={handleWhatsapp} disabled={busy}
+            className="border border-green-500 text-green-600 hover:bg-green-500 hover:text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50">
+            💬 WhatsApp
+          </button>
+        )}
         {hasPermission('manage-payments') && ['sent','partial','overdue'].includes(invoice.status) && balanceDue > 0 && (
           <button onClick={() => setShowPay(true)}
             className="bg-[#C9A052] hover:bg-[#b89140] text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
@@ -164,6 +201,15 @@ export default function InvoiceDetailPage() {
                   <td colSpan={3} className="px-5 py-2 text-right text-sm text-gray-500">Subtotal</td>
                   <td className="px-5 py-2 text-right text-sm font-medium">{money(invoice.subtotal)}</td>
                 </tr>
+                {parseFloat(invoice.discount_amount ?? '0') > 0 && (
+                  <tr>
+                    <td colSpan={3} className="px-5 py-2 text-right text-sm text-green-700">
+                      Discount ({parseFloat(invoice.discount_percent)}%)
+                      {invoice.discount_by && <span className="text-xs text-gray-400"> · by {invoice.discount_by}{invoice.coupon_code ? ` (${invoice.coupon_code})` : ''}</span>}
+                    </td>
+                    <td className="px-5 py-2 text-right text-sm font-medium text-green-700">− {money(invoice.discount_amount)}</td>
+                  </tr>
+                )}
                 <tr className="bg-[#1B2D4F]/5">
                   <td colSpan={3} className="px-5 py-2.5 text-right text-sm font-bold text-[#1B2D4F]">Total</td>
                   <td className="px-5 py-2.5 text-right text-sm font-bold text-[#1B2D4F]">{money(invoice.total_amount)}</td>

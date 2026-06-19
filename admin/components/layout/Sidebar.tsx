@@ -20,8 +20,10 @@ const MENU_ITEMS: MenuItem[] = [
   // ── Phase 2: Booking System ───────────────
   { label: 'Products',    icon: '🏢', href: '/dashboard/products',  roles: ['super_admin', 'admin', 'operations', 'finance'],    section: 'Bookings' },
   { label: 'Bookings',    icon: '📅', href: '/dashboard/bookings',  roles: ['super_admin', 'admin', 'operations', 'finance'],    section: 'Bookings' },
+  { label: 'Waiting List',icon: '⏳', href: '/dashboard/waiting-list', roles: ['super_admin', 'admin', 'operations'],            section: 'Bookings' },
   { label: 'Tenants',     icon: '🏬', href: '/dashboard/tenants',   roles: ['super_admin', 'admin', 'operations'],                section: 'Bookings' },
   { label: 'Leases',      icon: '📄', href: '/dashboard/leases',    roles: ['super_admin', 'admin', 'operations', 'finance'],    section: 'Bookings' },
+  { label: 'Maintenance', icon: '🔧', href: '/dashboard/maintenance', roles: ['super_admin', 'admin', 'operations', 'finance'], section: 'Bookings' },
 
   // ── Phase 3: Finance ──────────────────────
   { label: 'Invoices',          icon: '🧾', href: '/dashboard/finance/invoices',             roles: ['super_admin', 'admin', 'operations', 'finance'], section: 'Finance' },
@@ -48,6 +50,7 @@ const MENU_ITEMS: MenuItem[] = [
   { label: 'Trial Balance',     icon: '⚖️', href: '/dashboard/accounting/trial-balance',     roles: ['super_admin', 'admin', 'finance'], section: 'Accounting' },
 
   // ── System ────────────────────────────────
+  { label: 'Coupons',     icon: '🎟️', href: '/dashboard/coupons',   roles: ['super_admin'],             section: 'System' },
   { label: 'Users',       icon: '👥', href: '/dashboard/users',     roles: ['super_admin', 'admin'],    section: 'System' },
   { label: 'Audit Logs',  icon: '📋', href: '/dashboard/audit',     roles: ['super_admin', 'admin'],    section: 'System' },
   { label: 'Settings',    icon: '⚙️', href: '/dashboard/settings',  roles: ['super_admin', 'admin'],    section: 'System' },
@@ -81,10 +84,13 @@ export function Sidebar({ collapsed }: SidebarProps) {
     <>
       {/* Logo */}
       <div className="p-6 border-b border-white/10">
-        <Link href="/dashboard" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-          <div className="text-3xl font-bold text-[#C9A052]">
-            {collapsed ? 'H' : 'Haleelo'}
-          </div>
+        <Link href="/dashboard" className="flex items-center hover:opacity-80 transition-opacity">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={collapsed ? '/logo-mark.svg' : '/logo-full-light.svg'}
+            alt="Haleelo Tower"
+            className={collapsed ? 'h-9 w-9' : 'h-9 w-auto'}
+          />
         </Link>
       </div>
 

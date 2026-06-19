@@ -70,6 +70,7 @@ class ReportController extends Controller
             'electricity'       => $this->reports->electricityReport($from, $to),
             'occupancy'         => $this->reports->occupancyReport($from, $to),
             'payroll-summary'   => $this->reports->payrollSummary($r->input('month')),
+            'discounts'         => $this->reports->discountsByEmployee($from, $to),
             default             => abort(404, 'Unknown report type'),
         };
     }
@@ -159,6 +160,13 @@ class ReportController extends Controller
                 array_merge(
                     collect($d['departments'])->map(fn ($x) => [ucwords(str_replace('_', ' ', $x['department'])), $x['employees'], $x['gross'], $x['deductions'], $x['net']])->all(),
                     [['TOTAL', $d['employee_count'], $d['total_gross'], $d['total_deductions'], $d['total_net']]]
+                )],
+
+            'discounts' => ["Discounts by Employee · {$d['from']} to {$d['to']}",
+                ['Employee', 'Role', 'Coupon', 'Discounted Invoices', 'Gross', 'Total Discount'],
+                array_merge(
+                    collect($d['rows'])->map(fn ($x) => [$x['employee'], $x['role'], $x['code'], $x['count'], $x['total_gross'], $x['total_discount']])->all(),
+                    [['TOTAL', '', '', $d['total_count'], '', $d['total_discount']]]
                 )],
 
             default => ['Report', ['Data'], []],

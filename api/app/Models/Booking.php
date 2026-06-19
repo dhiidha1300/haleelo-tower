@@ -19,10 +19,13 @@ class Booking extends Model
         'catering_package_id', 'dj_requested', 'cameraman_requested', 'extra_services',
         'base_price', 'catering_price', 'dj_price', 'cameraman_price', 'extras_price', 'total_price',
         'status', 'payment_status', 'notes', 'rejection_reason', 'created_by_user_id',
+        'coupon_id', 'discount_percent', 'discount_amount',
     ];
 
     protected $casts = [
-        'booking_date'    => 'date',
+        // Serialize as a plain calendar date (no time/timezone) so it never
+        // shifts a day across timezones — app tz is +3 (Africa/Mogadishu).
+        'booking_date'    => 'date:Y-m-d',
         'recurring'       => 'boolean',
         'dj_requested'    => 'boolean',
         'cameraman_requested' => 'boolean',
@@ -44,6 +47,11 @@ class Booking extends Model
     public function cateringPackage(): BelongsTo
     {
         return $this->belongsTo(CateringPackage::class);
+    }
+
+    public function coupon(): BelongsTo
+    {
+        return $this->belongsTo(Coupon::class);
     }
 
     public function statusLogs(): HasMany

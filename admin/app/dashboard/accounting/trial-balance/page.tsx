@@ -3,119 +3,223 @@
 import { useEffect, useState, Fragment } from 'react';
 import { accountingAPI } from '@/lib/api';
 
-interface Row { code: string; name: string; type: string; debit: string; credit: string; }
-interface TB { rows: Row[]; total_debit: string; total_credit: string; balanced: boolean; as_of: string; }
+interface RangeRow {
+  code: string; name: string; type: string;
+  opening_debit: string; opening_credit: string;
+  period_debit: string; period_credit: string;
+  closing_debit: string; closing_credit: string;
+}
+interface TBR { rows: RangeRow[]; totals: any; from: string | null; to: string; balanced: boolean; }
 
 const TYPE_LABELS: Record<string, string> = {
-  asset: 'Assets', liability: 'Liabilities', equity: 'Equity',
-  revenue: 'Revenue', expense: 'Expenses',
+  asset: 'Assets', liability: 'Liabilities', equity: 'Equity', revenue: 'Revenue', expense: 'Expenses',
 };
 const TYPE_ORDER = ['asset', 'liability', 'equity', 'revenue', 'expense'];
 
-export default function TrialBalancePage() {
-  const [tb, setTb]       = useState<TB | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [asOf, setAsOf]   = useState(new Date().toISOString().split('T')[0]);
+const fmt = (v: string | number) => {
+  const n = typeof v === 'string' ? parseFloat(v) : v;
+  return n === 0 ? '—' : `$${Math.abs(n).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+};
+const netOf = (d: string, c: string) => parseFloat(d || '0') - parseFloat(c || '0'); // + = debit side
+const fmtNet = (v: number) => v === 0 ? '—' : `${fmt(v)} ${v > 0 ? 'Dr' : 'Cr'}`;
 
-  const fetchTB = (date?: string) => {
+const startOfYear = () => `${new Date().getFullYear()}-01-01`;
+const today = () => new Date().toISOString().split('T')[0];
+const monthRange = (offset: number) => {
+  const d = new Date(); d.setMonth(d.getMonth() + offset);
+  const from = new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0];
+  const to = new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().split('T')[0];
+  return { from, to };
+};
+
+export default function TrialBalancePage() {
+  const [mode, setMode] = useState<'range' | 'compare'>('range');
+  const [loading, setLoading] = useState(false);
+
+  // Range mode
+  const [from, setFrom] = useState(startOfYear());
+  const [to, setTo]     = useState(today());
+  const [tb, setTb]     = useState<TBR | null>(null);
+
+  // Compare mode (two periods)
+  const [aFrom, setAFrom] = useState(monthRange(-1).from);
+  const [aTo, setATo]     = useState(monthRange(-1).to);
+  const [bFrom, setBFrom] = useState(monthRange(0).from);
+  const [bTo, setBTo]     = useState(monthRange(0).to);
+  const [cmpA, setCmpA]   = useState<TBR | null>(null);
+  const [cmpB, setCmpB]   = useState<TBR | null>(null);
+
+  const runRange = () => {
     setLoading(true);
-    accountingAPI.trialBalance(date)
-      .then(r => setTb(r.data))
-      .finally(() => setLoading(false));
+    accountingAPI.trialBalanceRange(from, to).then(r => setTb(r.data)).finally(() => setLoading(false));
+  };
+  const runCompare = () => {
+    setLoading(true);
+    Promise.all([
+      accountingAPI.trialBalanceRange(aFrom, aTo),
+      accountingAPI.trialBalanceRange(bFrom, bTo),
+    ]).then(([a, b]) => { setCmpA(a.data); setCmpB(b.data); }).finally(() => setLoading(false));
   };
 
-  useEffect(() => { fetchTB(asOf); }, []);
+  useEffect(() => { runRange(); }, []);
 
-  const fmt = (v: string) => parseFloat(v) === 0 ? '' : `$${parseFloat(v).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+  const grouped = (rows: RangeRow[]) =>
+    TYPE_ORDER.map(type => ({ type, rows: rows.filter(r => r.type === type) })).filter(g => g.rows.length > 0);
 
-  // Group rows by type
-  const grouped = TYPE_ORDER.map(type => ({
-    type,
-    rows: tb?.rows.filter(r => r.type === type) ?? [],
-  })).filter(g => g.rows.length > 0);
+  // Merge compare rows by code → closing nets for A & B
+  const compareRows = () => {
+    const map = new Map<string, { code: string; name: string; type: string; a: number; b: number }>();
+    (cmpA?.rows ?? []).forEach(r => map.set(r.code, { code: r.code, name: r.name, type: r.type, a: netOf(r.closing_debit, r.closing_credit), b: 0 }));
+    (cmpB?.rows ?? []).forEach(r => {
+      const e = map.get(r.code) ?? { code: r.code, name: r.name, type: r.type, a: 0, b: 0 };
+      e.b = netOf(r.closing_debit, r.closing_credit); map.set(r.code, e);
+    });
+    return Array.from(map.values());
+  };
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center flex-wrap gap-4">
         <div>
           <h1 className="text-3xl font-bold text-[#1B2D4F]">Trial Balance</h1>
-          <p className="text-gray-600">All accounts with debit/credit totals · validates the ledger</p>
+          <p className="text-gray-600">Opening &amp; closing balances over a date range, with period comparison</p>
         </div>
-        <div className="flex items-end gap-2">
-          <div>
-            <label className="block text-xs text-gray-500 mb-1">As of date</label>
-            <input type="date" value={asOf} onChange={e => setAsOf(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A052]" />
-          </div>
-          <button onClick={() => fetchTB(asOf)}
-            className="bg-[#1B2D4F] hover:bg-[#0f1d33] text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-            Run
-          </button>
+        <div className="flex gap-1 bg-gray-100 p-1 rounded-xl">
+          {(['range', 'compare'] as const).map(m => (
+            <button key={m} onClick={() => setMode(m)}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${mode === m ? 'bg-white text-[#1B2D4F] shadow-sm' : 'text-gray-500 hover:text-[#1B2D4F]'}`}>
+              {m === 'range' ? '📅 Date Range' : '⇄ Compare Periods'}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* Validation banner */}
-      {tb && (
-        <div className={`rounded-xl p-4 flex items-center justify-between ${tb.balanced ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
-          <div className="flex items-center gap-3">
-            <span className="text-2xl">{tb.balanced ? '✅' : '⚠️'}</span>
-            <div>
-              <p className={`font-semibold ${tb.balanced ? 'text-green-800' : 'text-red-800'}`}>
-                {tb.balanced ? 'Ledger is balanced' : 'Ledger is OUT OF BALANCE'}
-              </p>
-              <p className={`text-xs ${tb.balanced ? 'text-green-600' : 'text-red-600'}`}>
-                Σ Debits {tb.balanced ? '=' : '≠'} Σ Credits · as of {tb.as_of}
-              </p>
+      {/* ── RANGE MODE ── */}
+      {mode === 'range' && (
+        <>
+          <div className="bg-white rounded-lg shadow p-4 flex items-end gap-3 flex-wrap">
+            <div><label className="block text-xs text-gray-500 mb-1">From</label>
+              <input type="date" value={from} onChange={e => setFrom(e.target.value)} className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A052]" /></div>
+            <div><label className="block text-xs text-gray-500 mb-1">To</label>
+              <input type="date" value={to} onChange={e => setTo(e.target.value)} className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A052]" /></div>
+            <button onClick={runRange} className="bg-[#1B2D4F] hover:bg-[#0f1d33] text-white px-5 py-2 rounded-lg text-sm font-medium">Run</button>
+          </div>
+
+          {tb && (
+            <div className={`rounded-xl p-4 flex items-center justify-between ${tb.balanced ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">{tb.balanced ? '✅' : '⚠️'}</span>
+                <p className={`font-semibold ${tb.balanced ? 'text-green-800' : 'text-red-800'}`}>
+                  {tb.balanced ? 'Ledger is balanced' : 'Ledger is OUT OF BALANCE'} · {tb.from ?? 'start'} → {tb.to}
+                </p>
+              </div>
+              <div className="text-right text-sm text-gray-500">
+                Closing Dr <span className="font-semibold text-[#1B2D4F]">{fmt(tb.totals.cd)}</span> · Cr <span className="font-semibold text-[#1B2D4F]">{fmt(tb.totals.cc)}</span>
+              </div>
             </div>
-          </div>
-          <div className="text-right text-sm">
-            <p className="text-gray-500">Total Debit: <span className="font-semibold text-[#1B2D4F]">${parseFloat(tb.total_debit).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span></p>
-            <p className="text-gray-500">Total Credit: <span className="font-semibold text-[#1B2D4F]">${parseFloat(tb.total_credit).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span></p>
-          </div>
-        </div>
+          )}
+
+          {loading ? <div className="text-center py-12 text-gray-500">Calculating…</div>
+          : !tb || tb.rows.length === 0 ? <div className="text-center py-12 text-gray-500">No account activity in this range.</div>
+          : (
+            <div className="bg-white rounded-lg shadow overflow-x-auto">
+              <table className="w-full min-w-[720px]">
+                <thead className="bg-[#1B2D4F] text-white">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase">Account</th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold uppercase">Opening</th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold uppercase">Debit</th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold uppercase">Credit</th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold uppercase">Closing</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {grouped(tb.rows).map(group => (
+                    <Fragment key={group.type}>
+                      <tr className="bg-gray-100"><td colSpan={5} className="px-4 py-1.5 text-xs font-semibold text-gray-500 uppercase">{TYPE_LABELS[group.type]}</td></tr>
+                      {group.rows.map(r => (
+                        <tr key={r.code} className="border-b hover:bg-gray-50">
+                          <td className="px-4 py-2.5 text-sm text-gray-700"><span className="font-mono text-xs text-gray-400 mr-2">{r.code}</span>{r.name}</td>
+                          <td className="px-4 py-2.5 text-right text-sm text-gray-500">{fmtNet(netOf(r.opening_debit, r.opening_credit))}</td>
+                          <td className="px-4 py-2.5 text-right text-sm text-gray-700">{fmt(r.period_debit)}</td>
+                          <td className="px-4 py-2.5 text-right text-sm text-gray-700">{fmt(r.period_credit)}</td>
+                          <td className="px-4 py-2.5 text-right text-sm font-medium text-[#1B2D4F]">{fmtNet(netOf(r.closing_debit, r.closing_credit))}</td>
+                        </tr>
+                      ))}
+                    </Fragment>
+                  ))}
+                  <tr className="bg-gray-50 border-t-2 border-[#1B2D4F] font-bold text-[#1B2D4F]">
+                    <td className="px-4 py-3 text-sm text-right">TOTALS</td>
+                    <td className="px-4 py-3 text-right text-sm">{fmt(netOf(tb.totals.od, tb.totals.oc))}</td>
+                    <td className="px-4 py-3 text-right text-sm">{fmt(tb.totals.pd)}</td>
+                    <td className="px-4 py-3 text-right text-sm">{fmt(tb.totals.pc)}</td>
+                    <td className="px-4 py-3 text-right text-sm">Dr {fmt(tb.totals.cd)} / Cr {fmt(tb.totals.cc)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
       )}
 
-      {loading ? (
-        <div className="text-center py-12 text-gray-500">Calculating…</div>
-      ) : !tb || tb.rows.length === 0 ? (
-        <div className="text-center py-12 text-gray-500">No account activity to report yet.</div>
-      ) : (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <table className="w-full">
-            <thead className="bg-[#1B2D4F] text-white">
-              <tr>
-                <th className="px-5 py-3 text-left text-xs font-semibold uppercase">Code</th>
-                <th className="px-5 py-3 text-left text-xs font-semibold uppercase">Account</th>
-                <th className="px-5 py-3 text-right text-xs font-semibold uppercase">Debit</th>
-                <th className="px-5 py-3 text-right text-xs font-semibold uppercase">Credit</th>
-              </tr>
-            </thead>
-            <tbody>
-              {grouped.map(group => (
-                <Fragment key={group.type}>
-                  <tr className="bg-gray-100">
-                    <td colSpan={4} className="px-5 py-1.5 text-xs font-semibold text-gray-500 uppercase">
-                      {TYPE_LABELS[group.type]}
-                    </td>
+      {/* ── COMPARE MODE ── */}
+      {mode === 'compare' && (
+        <>
+          <div className="bg-white rounded-lg shadow p-4 flex items-end gap-4 flex-wrap">
+            <div className="flex items-end gap-2">
+              <span className="text-xs font-semibold text-[#C9A052] mb-2">Period A</span>
+              <div><label className="block text-xs text-gray-500 mb-1">From</label><input type="date" value={aFrom} onChange={e => setAFrom(e.target.value)} className="px-3 py-2 border border-gray-300 rounded-lg text-sm" /></div>
+              <div><label className="block text-xs text-gray-500 mb-1">To</label><input type="date" value={aTo} onChange={e => setATo(e.target.value)} className="px-3 py-2 border border-gray-300 rounded-lg text-sm" /></div>
+            </div>
+            <div className="flex items-end gap-2">
+              <span className="text-xs font-semibold text-[#1B2D4F] mb-2">Period B</span>
+              <div><label className="block text-xs text-gray-500 mb-1">From</label><input type="date" value={bFrom} onChange={e => setBFrom(e.target.value)} className="px-3 py-2 border border-gray-300 rounded-lg text-sm" /></div>
+              <div><label className="block text-xs text-gray-500 mb-1">To</label><input type="date" value={bTo} onChange={e => setBTo(e.target.value)} className="px-3 py-2 border border-gray-300 rounded-lg text-sm" /></div>
+            </div>
+            <button onClick={runCompare} className="bg-[#1B2D4F] hover:bg-[#0f1d33] text-white px-5 py-2 rounded-lg text-sm font-medium">Compare</button>
+          </div>
+
+          {loading ? <div className="text-center py-12 text-gray-500">Calculating…</div>
+          : !cmpA || !cmpB ? <div className="text-center py-12 text-gray-500">Pick two periods and press Compare.</div>
+          : (
+            <div className="bg-white rounded-lg shadow overflow-x-auto">
+              <table className="w-full min-w-[640px]">
+                <thead className="bg-[#1B2D4F] text-white">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase">Account</th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold uppercase">Period A<br/><span className="font-normal text-white/60">{aFrom} → {aTo}</span></th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold uppercase">Period B<br/><span className="font-normal text-white/60">{bFrom} → {bTo}</span></th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold uppercase">Variance</th>
                   </tr>
-                  {group.rows.map(r => (
-                    <tr key={r.code} className="border-b hover:bg-gray-50">
-                      <td className="px-5 py-2.5 font-mono text-xs text-gray-500">{r.code}</td>
-                      <td className="px-5 py-2.5 text-sm text-gray-700">{r.name}</td>
-                      <td className="px-5 py-2.5 text-right text-sm text-gray-700">{fmt(r.debit)}</td>
-                      <td className="px-5 py-2.5 text-right text-sm text-gray-700">{fmt(r.credit)}</td>
-                    </tr>
-                  ))}
-                </Fragment>
-              ))}
-              <tr className="bg-gray-50 border-t-2 border-[#1B2D4F] font-bold">
-                <td colSpan={2} className="px-5 py-3 text-sm text-[#1B2D4F] text-right">TOTAL</td>
-                <td className="px-5 py-3 text-right text-sm text-[#1B2D4F]">${parseFloat(tb.total_debit).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                <td className="px-5 py-3 text-right text-sm text-[#1B2D4F]">${parseFloat(tb.total_credit).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+                </thead>
+                <tbody>
+                  {TYPE_ORDER.map(type => {
+                    const rows = compareRows().filter(r => r.type === type);
+                    if (!rows.length) return null;
+                    return (
+                      <Fragment key={type}>
+                        <tr className="bg-gray-100"><td colSpan={4} className="px-4 py-1.5 text-xs font-semibold text-gray-500 uppercase">{TYPE_LABELS[type]}</td></tr>
+                        {rows.map(r => {
+                          const v = +(r.b - r.a).toFixed(2);
+                          return (
+                            <tr key={r.code} className="border-b hover:bg-gray-50">
+                              <td className="px-4 py-2.5 text-sm text-gray-700"><span className="font-mono text-xs text-gray-400 mr-2">{r.code}</span>{r.name}</td>
+                              <td className="px-4 py-2.5 text-right text-sm text-gray-600">{fmtNet(r.a)}</td>
+                              <td className="px-4 py-2.5 text-right text-sm text-gray-600">{fmtNet(r.b)}</td>
+                              <td className={`px-4 py-2.5 text-right text-sm font-medium ${v > 0 ? 'text-green-600' : v < 0 ? 'text-red-600' : 'text-gray-400'}`}>
+                                {v === 0 ? '—' : `${v > 0 ? '▲' : '▼'} ${fmt(v)}`}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

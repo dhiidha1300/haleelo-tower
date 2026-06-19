@@ -24,7 +24,19 @@ class SettingsController extends Controller
             $settings['logo_url'] = \App\Support\FileStorage::url($settings['logo_url']);
         }
 
-        return response()->json($settings);
+        return response()->json($this->redactSecrets($settings));
+    }
+
+    /** Replace secret values with a configured flag so they never reach the browser. */
+    private function redactSecrets(array $settings): array
+    {
+        foreach (SystemSetting::ENCRYPTED_KEYS as $key) {
+            if (array_key_exists($key, $settings)) {
+                $settings[$key . '_set'] = (bool) ($settings[$key] ?? false);
+                $settings[$key] = '';
+            }
+        }
+        return $settings;
     }
 
     /** Public branding info for favicons / page titles (no auth required). */
@@ -60,15 +72,20 @@ class SettingsController extends Controller
         $validated = $request->validate([
             'settings' => 'required|array',
             'settings.*.key' => 'required|string',
-            'settings.*.value' => 'required|string',
+            'settings.*.value' => 'present|nullable|string', // allow blank values
             'settings.*.description' => 'nullable|string',
         ]);
 
         try {
             foreach ($validated['settings'] as $setting) {
+                // For secret keys, a blank submission means "leave unchanged".
+                if (SystemSetting::isEncryptedKey($setting['key']) && ($setting['value'] ?? '') === '') {
+                    continue;
+                }
+
                 SystemSetting::set(
                     $setting['key'],
-                    $setting['value'],
+                    $setting['value'] ?? '',
                     $setting['description'] ?? null,
                     Auth::id()
                 );
@@ -78,13 +95,14 @@ class SettingsController extends Controller
                     SystemSetting::class,
                     0,
                     null,
-                    ['key' => $setting['key'], 'value' => $setting['value']]
+                    // Never write secret values into the audit log.
+                    ['key' => $setting['key'], 'value' => SystemSetting::isEncryptedKey($setting['key']) ? '••••••' : $setting['value']]
                 );
             }
 
             return response()->json([
                 'message' => 'Settings updated successfully.',
-                'settings' => SystemSetting::all(),
+                'settings' => $this->redactSecrets(SystemSetting::all()),
             ]);
         } catch (\Exception $e) {
             return response()->json([
@@ -97,14 +115,21 @@ class SettingsController extends Controller
     public function updateSingle(Request $request, string $key): JsonResponse
     {
         $request->validate([
-            'value' => 'required|string',
+            // Settings can legitimately be blank (e.g. sender number is unused for
+            // the Cloud API provider) — accept empty strings, just require the field present.
+            'value' => 'present|nullable|string',
             'description' => 'nullable|string',
         ]);
 
         try {
+            // Blank value for a secret key means "leave unchanged".
+            if (SystemSetting::isEncryptedKey($key) && ($request->input('value') ?? '') === '') {
+                return response()->json(['message' => 'Setting unchanged.']);
+            }
+
             $setting = SystemSetting::set(
                 $key,
-                $request->value,
+                $request->input('value') ?? '',
                 $request->description ?? null,
                 Auth::id()
             );
@@ -114,8 +139,13 @@ class SettingsController extends Controller
                 SystemSetting::class,
                 0,
                 null,
-                ['key' => $key, 'value' => $request->value]
+                ['key' => $key, 'value' => SystemSetting::isEncryptedKey($key) ? '••••••' : $request->value]
             );
+
+            // Never echo a secret value back to the client.
+            if (SystemSetting::isEncryptedKey($key)) {
+                return response()->json(['message' => 'Setting updated successfully.']);
+            }
 
             return response()->json([
                 'message' => 'Setting updated successfully.',
@@ -206,12 +236,19 @@ class SettingsController extends Controller
     public function getEmailSettings(): JsonResponse
     {
         $keys = [
-            'resend_from_name',
-            'resend_from_email',
-            'resend_reply_to',
+            'mail_driver',
+            'smtp_host', 'smtp_port', 'smtp_encryption', 'smtp_username',
+            'mail_from_name', 'mail_from_email', 'mail_reply_to',
+            // legacy / fallback
+            'resend_from_name', 'resend_from_email', 'resend_reply_to',
         ];
 
         $settings = SystemSetting::whereIn('key', $keys)->get()->keyBy('key');
+
+        // Never expose secrets — surface only whether they are configured.
+        $settings = $settings->toArray();
+        $settings['smtp_password_set'] = (bool) (SystemSetting::get('smtp_password') ?: false);
+        $settings['resend_api_key_set'] = (bool) (SystemSetting::get('resend_api_key') ?: false);
 
         return response()->json($settings);
     }

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40" role="img" aria-label="Haleelo Tower mark">
+  <rect width="40" height="40" rx="9" fill="#1B2D4F"></rect>
+  <rect x="0.6" y="0.6" width="38.8" height="38.8" rx="8.4" fill="none" stroke="#C9A052" stroke-opacity="0.5" stroke-width="1.2"></rect>
+  <g fill="none" stroke="#C9A052" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M11 29h18M13 29V14l7-4 7 4v15M17 29v-6h6v6"></path>
+  </g>
+</svg>

@@ -3,38 +3,34 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\SystemSetting;
-use App\Services\EmailService;
+use App\Services\MailService;
+use App\Services\TemplateRenderer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Resend;
 
 class EmailController extends Controller
 {
+    public function __construct(
+        private MailService $mail,
+        private TemplateRenderer $renderer
+    ) {}
+
     public function test(Request $request): JsonResponse
     {
         $request->validate(['email' => 'required|email']);
 
-        $apiKey = SystemSetting::get('resend_api_key', env('RESEND_API_KEY', ''));
-
-        if (!$apiKey) {
-            return response()->json(['message' => 'Resend API key is not configured.'], 422);
+        if ($this->mail->effectiveDriver() === null) {
+            return response()->json(['message' => 'No mail transport is configured. Set up SMTP or Resend first.'], 422);
         }
 
-        $fromName  = SystemSetting::get('resend_from_name', 'Haleelo Tower');
-        $fromEmail = SystemSetting::get('resend_from_email', 'noreply@halelotower.so');
-
         try {
-            $client = Resend::client($apiKey);
-            $client->emails->send([
-                'from'    => "{$fromName} <{$fromEmail}>",
-                'to'      => [$request->email],
-                'subject' => 'Haleelo Tower — Email Test',
-                'html'    => '<p>This is a test email from your Haleelo Tower admin dashboard. Email is configured correctly.</p>',
-            ]);
+            $r = $this->renderer->render('test', []);
+            $this->mail->send($request->email, $r['subject'], $r['html']);
 
-            return response()->json(['message' => 'Test email sent successfully.']);
-        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Test email sent successfully via ' . strtoupper($this->mail->effectiveDriver()) . '.',
+            ]);
+        } catch (\Throwable $e) {
             return response()->json(['message' => 'Failed to send: ' . $e->getMessage()], 422);
         }
     }

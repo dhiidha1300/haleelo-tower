@@ -48,12 +48,14 @@ class InvoiceController extends Controller
 
     public function show(Invoice $invoice): JsonResponse
     {
-        $invoice->load(['lineItems.accountCode', 'payments.account', 'tenant', 'booking', 'lease.space', 'createdBy']);
+        $invoice->load(['lineItems.accountCode', 'payments.account', 'tenant', 'booking', 'lease.space', 'createdBy', 'coupon.user']);
 
         return response()->json(array_merge($invoice->toArray(), [
-            'bill_to'     => $invoice->billToName(),
-            'amount_paid' => $invoice->amountPaid(),
-            'balance_due' => $invoice->balanceDue(),
+            'bill_to'      => $invoice->billToName(),
+            'amount_paid'  => $invoice->amountPaid(),
+            'balance_due'  => $invoice->balanceDue(),
+            'discount_by'  => $invoice->coupon?->user?->name,
+            'coupon_code'  => $invoice->coupon?->code,
         ]));
     }
 
@@ -102,6 +104,45 @@ class InvoiceController extends Controller
             return response()->json($this->show($invoice)->getData());
         } catch (\InvalidArgumentException $e) {
             return response()->json(['error' => 'Validation Error', 'message' => $e->getMessage()], 422);
+        }
+    }
+
+    public function resend(Invoice $invoice): JsonResponse
+    {
+        try {
+            $invoice = $this->invoiceService->resend($invoice);
+            $this->auditService->log('updated', Invoice::class, (int) $invoice->id, null, [
+                'action' => 'resent', 'resend_count' => $invoice->resend_count,
+            ]);
+
+            // Fan out to WhatsApp too if the invoicing channel includes it (best-effort).
+            $comm = app(\App\Services\CommunicationService::class);
+            if ($comm->wantsWhatsapp('invoicing') && ($invoice->bill_to_phone || $invoice->tenant?->phone)) {
+                try { $comm->whatsappInvoice($invoice); } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning('WhatsApp invoice resend failed', ['invoice' => $invoice->id, 'error' => $e->getMessage()]);
+                }
+            }
+
+            return response()->json($this->show($invoice)->getData());
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['error' => 'Validation Error', 'message' => $e->getMessage()], 422);
+        }
+    }
+
+    /** Explicitly send this invoice's PDF over WhatsApp. */
+    public function sendWhatsapp(Invoice $invoice, \App\Services\CommunicationService $comm): JsonResponse
+    {
+        try {
+            $sent = $comm->whatsappInvoice($invoice);
+            if (!$sent) {
+                return response()->json(['message' => 'WhatsApp is not configured. Add the WhatsApp API credentials in Settings first.'], 422);
+            }
+            $this->auditService->log('updated', Invoice::class, (int) $invoice->id, null, ['action' => 'whatsapp_sent']);
+            return response()->json(['message' => 'Invoice sent over WhatsApp.']);
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        } catch (\Throwable $e) {
+            return response()->json(['message' => 'WhatsApp send failed: ' . $e->getMessage()], 500);
         }
     }
 

@@ -24,6 +24,11 @@ class BookingService
 
         $sessionTimes = $this->resolveSessionTimes($data);
 
+        // Block double-booking: the space must be free for this date + session.
+        if (!$this->checkAvailability($space->id, $data['session_type'], $data['booking_date'], $sessionTimes['start'], $sessionTimes['end'])) {
+            throw new \RuntimeException('This space is already booked for that date and session. Add the client to the waiting list instead.');
+        }
+
         $booking = Booking::create([
             'booking_code'       => $this->refService->generate('BK'),
             'type'               => $data['type'] ?? $this->inferType($space),
@@ -46,6 +51,7 @@ class BookingService
             'catering_price'     => $data['catering_price'] ?? 0,
             'dj_price'           => $data['dj_price'] ?? 0,
             'cameraman_price'    => $data['cameraman_price'] ?? 0,
+            'extra_services'     => $data['extra_services'] ?? null,
             'extras_price'       => $data['extras_price'] ?? 0,
             'total_price'        => $this->calcTotal($data),
             'status'             => 'draft',
@@ -150,8 +156,14 @@ class BookingService
         return $booking->fresh(['product', 'statusLogs.changedBy', 'cateringPackage']);
     }
 
-    public function checkAvailability(int $productId, string $sessionType, string $date, string $startTime, string $endTime, ?int $excludeBookingId = null): bool
+    public function checkAvailability(int $productId, string $sessionType, string $date, ?string $startTime = null, ?string $endTime = null, ?int $excludeBookingId = null): bool
     {
+        // Resolve the real session window (morning/afternoon/evening from settings)
+        // so a session conflict is detected regardless of times sent by the caller.
+        $times     = $this->resolveSessionTimes(['session_type' => $sessionType, 'start_time' => $startTime, 'end_time' => $endTime]);
+        $startTime = $times['start'];
+        $endTime   = $times['end'];
+
         $query = Booking::where('product_id', $productId)
             ->whereDate('booking_date', $date)
             ->whereNotIn('status', ['rejected', 'cancelled', 'waitlisted'])
@@ -186,8 +198,9 @@ class BookingService
         $next = WaitingList::where('product_id', $booking->product_id)
             ->where('session_type', $booking->session_type)
             ->whereDate('booking_date', $booking->booking_date)
-            ->where('notified', false)
-            ->orderBy('created_at')
+            ->where('status', 'waiting')
+            ->whereNull('slot_opened_at')
+            ->orderBy('position')
             ->first();
 
         if (!$next) return;
@@ -201,7 +214,7 @@ class BookingService
 
     public function getBookingWithDetails(Booking $booking): array
     {
-        $booking->load(['product.floor', 'statusLogs.changedBy', 'cateringPackage.items', 'createdBy']);
+        $booking->load(['product.floor', 'statusLogs.changedBy', 'cateringPackage.items', 'createdBy', 'coupon.user']);
 
         // Per-event P&L: revenue from the linked invoice − expenses linked to this booking
         $invoice = \App\Models\Invoice::where('booking_id', $booking->id)->whereNull('deleted_at')->first();
@@ -213,6 +226,8 @@ class BookingService
         $expenseTotal = (string) $expenses->sum('amount');
 
         return array_merge($booking->toArray(), [
+            'discount_by'   => $booking->coupon?->user?->name,
+            'coupon_code'   => $booking->coupon?->code,
             'event_financials' => [
                 'invoice_code'  => $invoice?->invoice_code,
                 'invoice_id'    => $invoice?->id,

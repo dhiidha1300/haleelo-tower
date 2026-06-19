@@ -13,4 +13,5 @@ Schedule::command('leases:update-statuses')->dailyAt('00:05');
 Schedule::command('leases:expiry-reminder')->dailyAt('08:00');
 Schedule::command('invoices:generate-monthly')->monthlyOn(1, '07:00');
 Schedule::command('invoices:reminder-check')->dailyAt('09:00');
+Schedule::command('waitlist:expire-past')->dailyAt('00:10');
 Schedule::command('reports:monthly')->lastDayOfMonth('23:30');

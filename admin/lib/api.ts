@@ -77,6 +77,13 @@ export const searchAPI = {
   query: (q: string) => api.get('/api/search', { params: { q } }),
 };
 
+// ─── B5: Staff coupons ──────────────────────────────────────────────────────
+export const couponsAPI = {
+  list:     () => api.get('/api/coupons'),
+  update:   (id: number, data: any) => api.put(`/api/coupons/${id}`, data),
+  validate: (code: string) => api.post('/api/coupons/validate', { code }),
+};
+
 export const userAPI = {
   list: (page = 1, search = '', role = '', status = '') =>
     api.get('/api/users', { params: { page, search, role, status } }),
@@ -108,6 +115,17 @@ export const emailAPI = {
   test: (email: string) => api.post('/api/email/test', { email }),
 };
 
+export const emailTemplatesAPI = {
+  list:    () => api.get('/api/email-templates'),
+  show:    (id: number) => api.get(`/api/email-templates/${id}`),
+  create:  (data: any) => api.post('/api/email-templates', data),
+  update:  (id: number, data: any) => api.put(`/api/email-templates/${id}`, data),
+  destroy: (id: number) => api.delete(`/api/email-templates/${id}`),
+  preview: (id: number, subject: string, body_html: string) =>
+    api.post(`/api/email-templates/${id}/preview`, { subject, body_html }),
+  test:    (id: number, email: string) => api.post(`/api/email-templates/${id}/test`, { email }),
+};
+
 export const cateringAPI = {
   list: () => api.get('/api/catering-packages'),
   create: (data: any) => api.post('/api/catering-packages', data),
@@ -121,6 +139,7 @@ export const dashboardAPI = {
   charts: () => api.get('/api/dashboard/charts'),
   finance: () => api.get('/api/dashboard/finance'),
   operations: () => api.get('/api/dashboard/operations'),
+  adminOverview: (range = 'month') => api.get('/api/dashboard/admin-overview', { params: { range } }),
 };
 
 // ─── Phase 3e: HR & Payroll ─────────────────────────────────────────────────
@@ -217,6 +236,36 @@ export const bookingsAPI = {
   addToWaitingList: (data: any) => api.post('/api/waiting-list', data),
 };
 
+// ── Maintenance ──────────────────────────────────────────────────────────────
+export const maintenanceAPI = {
+  list:   (params?: Record<string, string>) => api.get('/api/maintenance', { params }),
+  show:   (id: number) => api.get(`/api/maintenance/${id}`),
+  create: (data: any, photos: File[] = []) => {
+    const form = new FormData();
+    Object.entries(data).forEach(([k, v]) => { if (v !== null && v !== undefined && v !== '') form.append(k, String(v)); });
+    photos.forEach(p => form.append('photos[]', p));
+    return api.post('/api/maintenance', form, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
+  assign:    (id: number, employeeId: number) => api.post(`/api/maintenance/${id}/assign`, { employee_id: employeeId }),
+  outsource: (id: number, data: any) => api.post(`/api/maintenance/${id}/outsource`, data),
+  resolve:   (id: number, notes: string, photos: File[] = []) => {
+    const form = new FormData();
+    if (notes) form.append('resolution_notes', notes);
+    photos.forEach(p => form.append('photos[]', p));
+    return api.post(`/api/maintenance/${id}/resolve`, form, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
+  cancel: (id: number) => api.post(`/api/maintenance/${id}/cancel`),
+  report: (id: number) => api.get(`/api/maintenance/${id}/report`, { responseType: 'blob' }),
+};
+
+// ── Waiting list management ──────────────────────────────────────────────────
+export const waitingListAPI = {
+  list:    (params?: Record<string, string>) => api.get('/api/waiting-list', { params }),
+  add:     (data: any) => api.post('/api/waiting-list', data),
+  cancel:  (id: number) => api.post(`/api/waiting-list/${id}/cancel`),
+  convert: (id: number) => api.post(`/api/waiting-list/${id}/convert`),
+};
+
 // ─── Phase 2: Tenants ───────────────────────────────────────────────────────
 export const tenantsAPI = {
   list: (params?: Record<string, string>) => api.get('/api/tenants', { params }),
@@ -266,8 +315,18 @@ export const accountingAPI = {
   updateAccount:   (id: number, data: any) => api.put(`/api/chart-of-accounts/${id}`, data),
   deleteAccount:   (id: number) => api.delete(`/api/chart-of-accounts/${id}`),
 
-  accounts:        () => api.get('/api/accounts'),
+  accounts:        (all = false) => api.get('/api/accounts', { params: all ? { all: 1 } : {} }),
   createOperatingAccount: (data: any) => api.post('/api/accounts', data),
+  updateOperatingAccount: (id: number, data: any) => api.put(`/api/accounts/${id}`, data),
+  setAccountActive: (id: number, active: boolean, destinationAccountId?: number) =>
+    api.post(`/api/accounts/${id}/active`, { active, destination_account_id: destinationAccountId }),
+  reconcile: (id: number, file: File) => {
+    const form = new FormData();
+    form.append('statement', file);
+    return api.post(`/api/accounts/${id}/reconcile`, form, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
+  reconcileConfirm: (id: number, transactionIds: number[]) =>
+    api.post(`/api/accounts/${id}/reconcile/confirm`, { transaction_ids: transactionIds }),
   accountTransactions: (id: number, params?: Record<string, string>) =>
     api.get(`/api/accounts/${id}/transactions`, { params }),
   transfer:        (data: any) => api.post('/api/accounts/transfer', data),
@@ -277,6 +336,7 @@ export const accountingAPI = {
   journalEntry:    (id: number) => api.get(`/api/journal/${id}`),
   createJournal:   (data: any) => api.post('/api/journal', data),
   trialBalance:    (asOf?: string) => api.get('/api/journal/trial-balance', { params: asOf ? { as_of: asOf } : {} }),
+  trialBalanceRange: (from?: string, to?: string) => api.get('/api/journal/trial-balance-range', { params: { from, to } }),
 };
 
 // ─── Phase 3b: Invoices & Payments ──────────────────────────────────────────
@@ -285,6 +345,8 @@ export const invoicesAPI = {
   show:    (id: number) => api.get(`/api/invoices/${id}`),
   create:  (data: any) => api.post('/api/invoices', data),
   send:    (id: number) => api.post(`/api/invoices/${id}/send`),
+  resend:  (id: number) => api.post(`/api/invoices/${id}/resend`),
+  sendWhatsapp: (id: number) => api.post(`/api/invoices/${id}/whatsapp`),
   destroy: (id: number) => api.delete(`/api/invoices/${id}`),
   pdf:     (id: number) => api.get(`/api/invoices/${id}/pdf`, { responseType: 'blob' }),
   recordPayment: (id: number, data: any) => api.post(`/api/invoices/${id}/payments`, data),
@@ -309,6 +371,8 @@ export const vendorsAPI = {
 export const purchaseOrdersAPI = {
   list:   (params?: Record<string, string>) => api.get('/api/purchase-orders', { params }),
   show:   (id: number) => api.get(`/api/purchase-orders/${id}`),
+  pdf:    (id: number) => api.get(`/api/purchase-orders/${id}/pdf`, { responseType: 'blob' }),
+  sendWhatsapp: (id: number) => api.post(`/api/purchase-orders/${id}/whatsapp`),
   create: (data: any) => api.post('/api/purchase-orders', data),
   updateStatus: (id: number, status: string) => api.post(`/api/purchase-orders/${id}/status`, { status }),
 };

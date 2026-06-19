@@ -2,285 +2,132 @@
 
 namespace App\Services;
 
-use App\Models\SystemSetting;
-use Resend;
-
 class EmailService
 {
-    private function fromAddress(): string
-    {
-        return SystemSetting::get('resend_from_email', config('mail.from.address', 'noreply@halelotower.so'));
-    }
+    public function __construct(
+        private MailService $mail,
+        private TemplateRenderer $renderer
+    ) {}
 
-    private function fromName(): string
+    /** True when at least one transport (SMTP or Resend) is usable. */
+    private function ready(): bool
     {
-        return SystemSetting::get('resend_from_name', 'Haleelo Tower');
+        return $this->mail->effectiveDriver() !== null;
     }
 
     public function sendPasswordReset(string $toEmail, string $toName, string $resetUrl): void
     {
-        $from     = $this->fromName() . ' <' . $this->fromAddress() . '>';
-        $expiry   = '60 minutes';
-
-        $apiKey = SystemSetting::get('resend_api_key', env('RESEND_API_KEY', ''));
-        if (!$apiKey) {
-            throw new \Exception('Resend API key is not configured. Set it in Settings → Email.');
+        if (!$this->ready()) {
+            throw new \Exception('No mail transport is configured. Set up SMTP or Resend in Settings → Email.');
         }
-        $client = Resend::client($apiKey);
-        $client->emails->send([
-            'from'    => $from,
-            'to'      => [$toEmail],
-            'subject' => 'Reset Your Haleelo Tower Password',
-            'html'    => $this->passwordResetHtml($toName, $resetUrl, $expiry),
+        $r = $this->renderer->render('password_reset', [
+            'name' => $toName, 'reset_url' => $resetUrl, 'expiry' => '60 minutes',
         ]);
+        $this->mail->send($toEmail, $r['subject'], $r['html']);
+    }
+
+    public function sendUserInvite(string $toEmail, string $toName, string $role, string $setPasswordUrl): void
+    {
+        if (!$this->ready()) {
+            throw new \Exception('No mail transport is configured. Set up SMTP or Resend in Settings → Email.');
+        }
+        $r = $this->renderer->render('user_invite', [
+            'name' => $toName, 'email' => $toEmail,
+            'role' => ucfirst(str_replace('_', ' ', $role)),
+            'set_password_url' => $setPasswordUrl,
+        ]);
+        $this->mail->send($toEmail, $r['subject'], $r['html']);
     }
 
     public function sendInvoice(\App\Models\Invoice $invoice): void
     {
-        $apiKey = SystemSetting::get('resend_api_key', env('RESEND_API_KEY', ''));
-        if (!$apiKey || !$invoice->bill_to_email) return;
+        if (!$this->ready() || !$invoice->bill_to_email) return;
 
-        $client = Resend::client($apiKey);
-        $from   = $this->fromName() . ' <' . $this->fromAddress() . '>';
         $pdf    = app(\App\Services\InvoiceService::class)->generatePdf($invoice);
         $amount = number_format((float) $invoice->total_amount, 2);
 
-        $client->emails->send([
-            'from'    => $from,
-            'to'      => [$invoice->bill_to_email],
-            'subject' => "Invoice {$invoice->invoice_code} — \${$amount}",
-            'html'    => "<p>Dear {$invoice->billToName()},</p><p>Please find attached invoice <strong>{$invoice->invoice_code}</strong> for <strong>\${$amount}</strong>, due on {$invoice->due_date->format('d M Y')}.</p><p>Pay via Edahab, ZAAD, or bank transfer quoting your invoice code.</p>",
-            'attachments' => [[
-                'filename' => "{$invoice->invoice_code}.pdf",
-                'content'  => base64_encode($pdf),
-            ]],
+        $r = $this->renderer->render('invoice', [
+            'name' => $invoice->billToName(),
+            'invoice_code' => $invoice->invoice_code,
+            'amount' => $amount,
+            'due_date' => $invoice->due_date->format('d M Y'),
+        ]);
+
+        $this->mail->send($invoice->bill_to_email, $r['subject'], $r['html'], [
+            ['filename' => "{$invoice->invoice_code}.pdf", 'content' => $pdf],
         ]);
     }
 
     public function sendPayslip(\App\Models\Payslip $slip): void
     {
-        $apiKey = SystemSetting::get('resend_api_key', env('RESEND_API_KEY', ''));
         $emp = $slip->employee;
-        if (!$apiKey || !$emp?->email) return;
+        if (!$this->ready() || !$emp?->email) return;
 
-        $client = Resend::client($apiKey);
-        $from   = $this->fromName() . ' <' . $this->fromAddress() . '>';
-        $net    = number_format((float) $slip->net_pay, 2);
-        $month  = $slip->payrollRun?->month;
+        $net   = number_format((float) $slip->net_pay, 2);
+        $month = $slip->payrollRun?->month;
 
-        $payload = [
-            'from'    => $from,
-            'to'      => [$emp->email],
-            'subject' => "Payslip {$slip->payslip_code} — {$month}",
-            'html'    => "<p>Dear {$emp->full_name},</p><p>Your payslip for <strong>{$month}</strong> is attached. Net pay: <strong>\${$net}</strong>.</p>",
-        ];
+        $r = $this->renderer->render('payslip', [
+            'name' => $emp->full_name,
+            'payslip_code' => $slip->payslip_code,
+            'month' => (string) $month,
+            'net' => $net,
+        ]);
 
-        // Attach the stored PDF if available
+        $attachments = [];
         if ($slip->pdf_file_url) {
             try {
                 $pdf = app(\App\Services\PayrollService::class)->generatePayslipPdf($slip);
-                $payload['attachments'] = [['filename' => "{$slip->payslip_code}.pdf", 'content' => base64_encode($pdf)]];
+                $attachments[] = ['filename' => "{$slip->payslip_code}.pdf", 'content' => $pdf];
             } catch (\Exception $e) { /* send without attachment */ }
         }
 
-        $client->emails->send($payload);
+        $this->mail->send($emp->email, $r['subject'], $r['html'], $attachments);
     }
 
     public function sendBookingNotification(\App\Models\Booking $booking, string $eventType, string $message): void
     {
-        $apiKey = SystemSetting::get('resend_api_key', env('RESEND_API_KEY', ''));
-        if (!$apiKey || !$booking->client_email) return;
+        if (!$this->ready() || !$booking->client_email) return;
 
-        $client = Resend::client($apiKey);
-        $from   = $this->fromName() . ' <' . $this->fromAddress() . '>';
-
-        $subjects = [
-            'acknowledged' => "Booking Request Received — {$booking->booking_code}",
-            'approved'     => "Booking Confirmed — {$booking->booking_code}",
-            'rejected'     => "Booking Not Approved — {$booking->booking_code}",
-            'cancelled'    => "Booking Cancelled — {$booking->booking_code}",
+        $labels = [
+            'acknowledged' => 'Request Received',
+            'approved'     => 'Confirmed',
+            'rejected'     => 'Not Approved',
+            'cancelled'    => 'Cancelled',
         ];
 
-        $client->emails->send([
-            'from'    => $from,
-            'to'      => [$booking->client_email],
-            'subject' => $subjects[$eventType] ?? "Booking Update — {$booking->booking_code}",
-            'html'    => "<p>Dear {$booking->client_name},</p><p>{$message}</p><p>Reference: <strong>{$booking->booking_code}</strong></p>",
+        $r = $this->renderer->render('booking_notification', [
+            'name' => $booking->client_name,
+            'message' => $message,
+            'booking_code' => $booking->booking_code,
+            'status_label' => $labels[$eventType] ?? 'Update',
         ]);
+
+        $this->mail->send($booking->client_email, $r['subject'], $r['html']);
+    }
+
+    public function sendWaitlist(\App\Models\WaitingList $entry, string $subject, string $message): void
+    {
+        if (!$this->ready() || !$entry->client_email) return;
+
+        $r = $this->renderer->render('waitlist', [
+            'name' => $entry->client_name,
+            'subject' => $subject,
+            'message' => $message,
+        ]);
+
+        $this->mail->send($entry->client_email, $r['subject'], $r['html']);
     }
 
     public function sendLeaseRenewalReminder(\App\Models\Lease $lease): void
     {
-        $apiKey = SystemSetting::get('resend_api_key', env('RESEND_API_KEY', ''));
-        if (!$apiKey || !$lease->tenant?->email) return;
+        if (!$this->ready() || !$lease->tenant?->email) return;
 
-        $client  = Resend::client($apiKey);
-        $from    = $this->fromName() . ' <' . $this->fromAddress() . '>';
-        $tenant  = $lease->tenant;
-        $space   = $lease->space?->name ?? 'your space';
-        $endDate = $lease->end_date?->format('d M Y');
-
-        $client->emails->send([
-            'from'    => $from,
-            'to'      => [$tenant->email],
-            'subject' => "Lease Renewal Reminder — {$space}",
-            'html'    => "<p>Dear {$tenant->contact_person_name},</p><p>Your lease for <strong>{$space}</strong> expires on <strong>{$endDate}</strong>. Please contact us to discuss renewal options.</p>",
+        $r = $this->renderer->render('lease_renewal', [
+            'name' => $lease->tenant->contact_person_name,
+            'space' => $lease->space?->name ?? 'your space',
+            'end_date' => $lease->end_date?->format('d M Y') ?? '',
         ]);
-    }
 
-    public function sendUserInvite(string $toEmail, string $toName, string $role, string $setPasswordUrl): void
-    {
-        $apiKey = SystemSetting::get('resend_api_key', env('RESEND_API_KEY', ''));
-        if (!$apiKey) {
-            throw new \Exception('Resend API key is not configured. Set it in Settings → Email.');
-        }
-
-        $from = $this->fromName() . ' <' . $this->fromAddress() . '>';
-
-        $client = Resend::client($apiKey);
-        $client->emails->send([
-            'from'    => $from,
-            'to'      => [$toEmail],
-            'subject' => 'You have been invited to Haleelo Tower Admin',
-            'html'    => $this->userInviteHtml($toName, $toEmail, $role, $setPasswordUrl),
-        ]);
-    }
-
-    private function userInviteHtml(string $name, string $email, string $role, string $setPasswordUrl): string
-    {
-        $roleLabel = ucfirst(str_replace('_', ' ', $role));
-        return <<<HTML
-<!DOCTYPE html>
-<html>
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
-<body style="margin:0;padding:0;background:#f4f4f4;font-family:Arial,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f4;padding:40px 0;">
-    <tr><td align="center">
-      <table width="580" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
-
-        <tr>
-          <td style="background:#1B2D4F;padding:32px 40px;text-align:center;">
-            <h1 style="margin:0;color:#C9A052;font-size:28px;font-weight:700;">Haleelo Tower</h1>
-            <p style="margin:4px 0 0;color:#ffffff;opacity:0.8;font-size:13px;">Admin Dashboard</p>
-          </td>
-        </tr>
-
-        <tr>
-          <td style="padding:40px;">
-            <h2 style="margin:0 0 16px;color:#1B2D4F;font-size:22px;">Welcome to Haleelo Tower!</h2>
-            <p style="margin:0 0 12px;color:#555;font-size:15px;line-height:1.6;">Hi {$name},</p>
-            <p style="margin:0 0 24px;color:#555;font-size:15px;line-height:1.6;">
-              You have been invited to join the Haleelo Tower admin platform as <strong>{$roleLabel}</strong>.
-              Click the button below to set your password and activate your account.
-            </p>
-
-            <table style="background:#f9f9f9;border:1px solid #eee;border-radius:6px;padding:16px;margin-bottom:24px;width:100%;" cellpadding="0" cellspacing="0">
-              <tr><td style="font-size:13px;color:#555;">
-                <strong>Login Email:</strong> {$email}<br>
-                <strong>Role:</strong> {$roleLabel}
-              </td></tr>
-            </table>
-
-            <table cellpadding="0" cellspacing="0" style="margin:0 0 24px;">
-              <tr>
-                <td style="background:#C9A052;border-radius:6px;">
-                  <a href="{$setPasswordUrl}" style="display:inline-block;padding:14px 32px;color:#ffffff;text-decoration:none;font-size:15px;font-weight:600;">
-                    Set Your Password
-                  </a>
-                </td>
-              </tr>
-            </table>
-
-            <p style="margin:0 0 8px;color:#888;font-size:13px;">
-              This invitation link expires in <strong>24 hours</strong>. If you did not expect this invitation, you can safely ignore this email.
-            </p>
-            <p style="margin:16px 0 0;color:#aaa;font-size:12px;word-break:break-all;">
-              If the button doesn't work, paste this URL into your browser:<br>
-              <a href="{$setPasswordUrl}" style="color:#C9A052;">{$setPasswordUrl}</a>
-            </p>
-          </td>
-        </tr>
-
-        <tr>
-          <td style="background:#f9f9f9;padding:20px 40px;border-top:1px solid #eee;text-align:center;">
-            <p style="margin:0;color:#aaa;font-size:12px;">© 2026 Haleelo Tower · Mogadishu, Somalia</p>
-          </td>
-        </tr>
-
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>
-HTML;
-    }
-
-    private function passwordResetHtml(string $name, string $resetUrl, string $expiry): string
-    {
-        return <<<HTML
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Reset Your Password</title>
-</head>
-<body style="margin:0;padding:0;background:#f4f4f4;font-family:Arial,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f4;padding:40px 0;">
-    <tr><td align="center">
-      <table width="580" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
-
-        <!-- Header -->
-        <tr>
-          <td style="background:#1B2D4F;padding:32px 40px;text-align:center;">
-            <h1 style="margin:0;color:#C9A052;font-size:28px;font-weight:700;letter-spacing:1px;">Haleelo Tower</h1>
-            <p style="margin:4px 0 0;color:#ffffff;opacity:0.8;font-size:13px;">Admin Dashboard</p>
-          </td>
-        </tr>
-
-        <!-- Body -->
-        <tr>
-          <td style="padding:40px;">
-            <h2 style="margin:0 0 16px;color:#1B2D4F;font-size:22px;">Reset Your Password</h2>
-            <p style="margin:0 0 12px;color:#555;font-size:15px;line-height:1.6;">Hi {$name},</p>
-            <p style="margin:0 0 24px;color:#555;font-size:15px;line-height:1.6;">
-              A password reset was requested for your Haleelo Tower admin account. Click the button below to set a new password.
-            </p>
-
-            <!-- CTA Button -->
-            <table cellpadding="0" cellspacing="0" style="margin:0 0 24px;">
-              <tr>
-                <td style="background:#C9A052;border-radius:6px;">
-                  <a href="{$resetUrl}" style="display:inline-block;padding:14px 32px;color:#ffffff;text-decoration:none;font-size:15px;font-weight:600;">
-                    Reset Password
-                  </a>
-                </td>
-              </tr>
-            </table>
-
-            <p style="margin:0 0 8px;color:#888;font-size:13px;">
-              This link expires in <strong>{$expiry}</strong>. If you did not request a password reset, you can safely ignore this email — your password will not change.
-            </p>
-
-            <p style="margin:16px 0 0;color:#aaa;font-size:12px;word-break:break-all;">
-              If the button above doesn't work, copy and paste this URL into your browser:<br>
-              <a href="{$resetUrl}" style="color:#C9A052;">{$resetUrl}</a>
-            </p>
-          </td>
-        </tr>
-
-        <!-- Footer -->
-        <tr>
-          <td style="background:#f9f9f9;padding:20px 40px;border-top:1px solid #eee;text-align:center;">
-            <p style="margin:0;color:#aaa;font-size:12px;">© 2026 Haleelo Tower · Mogadishu, Somalia</p>
-          </td>
-        </tr>
-
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>
-HTML;
+        $this->mail->send($lease->tenant->email, $r['subject'], $r['html']);
     }
 }

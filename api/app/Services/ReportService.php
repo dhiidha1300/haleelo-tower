@@ -273,6 +273,37 @@ class ReportService
         return ['from' => $pl['from'], 'to' => $pl['to'], 'sources' => $pl['revenue'], 'total' => $pl['total_revenue']];
     }
 
+    // ── Discounts by Employee (B5 reporting) ─────────────────────────────────
+    public function discountsByEmployee(?string $from = null, ?string $to = null): array
+    {
+        $from = $from ?? now()->startOfYear()->toDateString();
+        $to   = $to   ?? now()->toDateString();
+
+        $invoices = \App\Models\Invoice::where('discount_amount', '>', 0)
+            ->whereBetween('issue_date', [$from, $to])
+            ->with('coupon.user')
+            ->get();
+
+        $rows = $invoices->groupBy(fn ($i) => $i->coupon?->user?->id ?? 0)->map(function ($group) {
+            $owner = $group->first()->coupon?->user;
+            return [
+                'employee'        => $owner?->name ?? 'Unattributed',
+                'role'            => $owner?->getRoleNames()->first(),
+                'code'            => $group->first()->coupon?->code,
+                'count'           => $group->count(),
+                'total_gross'     => (string) $group->sum('subtotal'),
+                'total_discount'  => (string) $group->sum('discount_amount'),
+            ];
+        })->sortByDesc('total_discount')->values()->all();
+
+        return [
+            'from' => $from, 'to' => $to,
+            'rows' => $rows,
+            'total_discount' => (string) $invoices->sum('discount_amount'),
+            'total_count'    => $invoices->count(),
+        ];
+    }
+
     // ── 9. Expense Report (by category) ──────────────────────────────────────
     public function expenseReport(?string $from = null, ?string $to = null): array
     {
@@ -385,14 +416,21 @@ class ReportService
     }
 
     // ── 14. Occupancy Report ─────────────────────────────────────────────────
-    public function occupancyReport(?string $from = null, ?string $to = null): array
+    /**
+     * @param bool $committed When true, a space counts as occupied if it has any active
+     *   lease that has not yet ended (end_date >= $from) — including future-dated leases
+     *   that haven't started. Used by the dashboard ("is this space committed?"). When
+     *   false (default), only leases whose term actually overlaps [$from,$to] count
+     *   (point-in-time, used by the historical Reports module).
+     */
+    public function occupancyReport(?string $from = null, ?string $to = null, bool $committed = false): array
     {
         $from = $from ?? now()->startOfMonth()->toDateString();
         $to   = $to   ?? now()->toDateString();
         $days = Carbon::parse($from)->diffInDays(Carbon::parse($to)) + 1;
 
         $spaces = Space::with('floor')->get();
-        $rows = $spaces->map(function ($s) use ($from, $to, $days) {
+        $rows = $spaces->map(function ($s) use ($from, $to, $days, $committed) {
             if ($s->type === 'conference_hall') {
                 $booked = Booking::where('product_id', $s->id)
                     ->where('status', 'booking_approved')
@@ -403,8 +441,11 @@ class ReportService
                         'rate' => $capacity > 0 ? round($booked / $capacity * 100, 1) : 0];
             }
             // office/educational: occupied if an active lease overlaps the period
+            // (point-in-time), or — in committed mode — any active lease not yet ended.
             $leased = Lease::where('space_id', $s->id)->where('status', 'active')
-                ->whereDate('start_date', '<=', $to)->whereDate('end_date', '>=', $from)->exists();
+                ->whereDate('end_date', '>=', $from)
+                ->when(! $committed, fn ($q) => $q->whereDate('start_date', '<=', $to))
+                ->exists();
             return ['space' => $s->name, 'floor' => $s->floor?->name, 'type' => $s->type,
                     'booked' => $leased ? $days : 0, 'available' => $days,
                     'rate' => $leased ? 100 : 0];

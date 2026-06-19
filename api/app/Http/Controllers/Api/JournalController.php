@@ -99,4 +99,11 @@ class JournalController extends Controller
             $this->accountingService->trialBalance($request->input('as_of'))
         );
     }
+
+    public function trialBalanceRange(Request $request): JsonResponse
+    {
+        return response()->json(
+            $this->accountingService->trialBalanceRange($request->input('from'), $request->input('to'))
+        );
+    }
 }

@@ -162,6 +162,78 @@ class AccountingService
         ];
     }
 
+    /**
+     * Ranged trial balance: per account, the opening balance (before `from`),
+     * the debit/credit movement within [from, to], and the closing balance
+     * (as of `to`). `from` null = from the beginning of time.
+     */
+    public function trialBalanceRange(?string $from, ?string $to = null): array
+    {
+        $to = $to ?: now()->toDateString();
+        $accounts = ChartOfAccount::orderBy('code')->get();
+
+        $rows = [];
+        $t = ['od' => '0', 'oc' => '0', 'pd' => '0', 'pc' => '0', 'cd' => '0', 'cc' => '0'];
+
+        foreach ($accounts as $a) {
+            $base = fn () => JournalEntryLine::where('account_id', $a->id);
+            $sum  = fn ($q, $type) => (string) $q->where('type', $type)->sum('amount');
+
+            $beforeDebit = '0'; $beforeCredit = '0';
+            if ($from) {
+                $bq = $base()->whereHas('journalEntry', fn ($e) => $e->whereDate('entry_date', '<', $from));
+                $beforeDebit  = $sum((clone $bq), 'debit');
+                $beforeCredit = $sum((clone $bq), 'credit');
+            }
+
+            $pq = $base()->whereHas('journalEntry', function ($e) use ($from, $to) {
+                $e->whereDate('entry_date', '<=', $to);
+                if ($from) $e->whereDate('entry_date', '>=', $from);
+            });
+            $periodDebit  = $sum((clone $pq), 'debit');
+            $periodCredit = $sum((clone $pq), 'credit');
+
+            $cq = $base()->whereHas('journalEntry', fn ($e) => $e->whereDate('entry_date', '<=', $to));
+            $closeDebit  = $sum((clone $cq), 'debit');
+            $closeCredit = $sum((clone $cq), 'credit');
+
+            if (bccomp($closeDebit, '0', 2) === 0 && bccomp($closeCredit, '0', 2) === 0
+                && bccomp($beforeDebit, '0', 2) === 0 && bccomp($beforeCredit, '0', 2) === 0) {
+                continue;
+            }
+
+            $isDebitNormal = in_array($a->type, ['asset', 'expense']);
+            [$od, $oc] = $this->splitNormal($isDebitNormal, $beforeDebit, $beforeCredit);
+            [$cd, $cc] = $this->splitNormal($isDebitNormal, $closeDebit, $closeCredit);
+
+            $rows[] = [
+                'code' => $a->code, 'name' => $a->name, 'type' => $a->type,
+                'opening_debit' => $od, 'opening_credit' => $oc,
+                'period_debit'  => $periodDebit, 'period_credit' => $periodCredit,
+                'closing_debit' => $cd, 'closing_credit' => $cc,
+            ];
+
+            $t['od'] = bcadd($t['od'], $od, 2); $t['oc'] = bcadd($t['oc'], $oc, 2);
+            $t['pd'] = bcadd($t['pd'], $periodDebit, 2); $t['pc'] = bcadd($t['pc'], $periodCredit, 2);
+            $t['cd'] = bcadd($t['cd'], $cd, 2); $t['cc'] = bcadd($t['cc'], $cc, 2);
+        }
+
+        return [
+            'rows' => $rows, 'totals' => $t, 'from' => $from, 'to' => $to,
+            'balanced' => bccomp($t['cd'], $t['cc'], 2) === 0,
+        ];
+    }
+
+    /** Net a debit/credit pair into the correct column for the account's normal balance. */
+    private function splitNormal(bool $isDebitNormal, string $debit, string $credit): array
+    {
+        $net = $isDebitNormal ? bcsub($debit, $credit, 2) : bcsub($credit, $debit, 2);
+        if ($isDebitNormal) {
+            return bccomp($net, '0', 2) >= 0 ? [$net, '0'] : ['0', bcmul($net, '-1', 2)];
+        }
+        return bccomp($net, '0', 2) >= 0 ? ['0', $net] : [bcmul($net, '-1', 2), '0'];
+    }
+
     private function validateLines(array $lines): void
     {
         if (count($lines) < 2) {

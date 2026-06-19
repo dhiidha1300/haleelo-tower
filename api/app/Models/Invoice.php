@@ -17,6 +17,8 @@ class Invoice extends Model
         'issue_date', 'due_date', 'billing_period_start', 'billing_period_end',
         'lpo_number', 'subtotal', 'total_amount', 'status',
         'payment_account_id', 'journal_entry_id', 'notes', 'sent_at', 'created_by',
+        'last_sent_at', 'resend_count',
+        'discount_percent', 'discount_amount', 'coupon_id',
     ];
 
     protected $casts = [
@@ -25,6 +27,7 @@ class Invoice extends Model
         'billing_period_start' => 'date',
         'billing_period_end'   => 'date',
         'sent_at'              => 'datetime',
+        'last_sent_at'         => 'datetime',
         'subtotal'             => 'decimal:2',
         'total_amount'         => 'decimal:2',
     ];
@@ -32,6 +35,11 @@ class Invoice extends Model
     public function lineItems(): HasMany
     {
         return $this->hasMany(InvoiceLineItem::class);
+    }
+
+    public function coupon(): BelongsTo
+    {
+        return $this->belongsTo(Coupon::class);
     }
 
     public function payments(): HasMany

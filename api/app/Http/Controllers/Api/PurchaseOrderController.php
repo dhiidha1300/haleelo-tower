@@ -87,6 +87,43 @@ class PurchaseOrderController extends Controller
         return response()->json($purchaseOrder->load(['vendor', 'items.expenseAccount', 'bills', 'createdBy']));
     }
 
+    private function buildPdf(PurchaseOrder $po): string
+    {
+        $po->load(['vendor', 'items']);
+        $building = [
+            'name'    => \App\Models\SystemSetting::get('building_name', 'Haleelo Tower'),
+            'address' => \App\Models\SystemSetting::get('address', ''),
+            'phone'   => \App\Models\SystemSetting::get('contact_phone', ''),
+            'email'   => \App\Models\SystemSetting::get('contact_email', ''),
+        ];
+        return \Barryvdh\DomPDF\Facade\Pdf::loadView('pdfs.purchase_order', ['po' => $po, 'building' => $building])->output();
+    }
+
+    /** Vendor-facing printable PO PDF. */
+    public function pdf(PurchaseOrder $purchaseOrder)
+    {
+        return response($this->buildPdf($purchaseOrder), 200, [
+            'Content-Type'        => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="' . $purchaseOrder->po_code . '.pdf"',
+        ]);
+    }
+
+    /** Send the PO to its vendor over WhatsApp. */
+    public function sendWhatsapp(PurchaseOrder $purchaseOrder, \App\Services\CommunicationService $comm): JsonResponse
+    {
+        try {
+            $sent = $comm->whatsappPurchaseOrder($purchaseOrder, $this->buildPdf($purchaseOrder));
+            if (!$sent) {
+                return response()->json(['message' => 'WhatsApp is not configured. Add the WhatsApp API credentials in Settings first.'], 422);
+            }
+            return response()->json(['message' => 'Purchase order sent to vendor over WhatsApp.']);
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        } catch (\Throwable $e) {
+            return response()->json(['message' => 'WhatsApp send failed: ' . $e->getMessage()], 500);
+        }
+    }
+
     public function updateStatus(Request $request, PurchaseOrder $purchaseOrder): JsonResponse
     {
         $request->validate(['status' => 'required|in:draft,sent,received,billed,cancelled']);

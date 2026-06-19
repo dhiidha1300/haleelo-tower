@@ -70,6 +70,13 @@ class PaymentController extends Controller
             $payment = $this->paymentService->recordCustomerReceipt($invoice, $request->all(), Auth::user());
             $this->auditService->log('created', Payment::class, (int) $payment->id, null, $payment->toArray());
 
+            // Send a receipt over WhatsApp if the Receipts channel includes it (best-effort).
+            $comm = app(\App\Services\CommunicationService::class);
+            if ($comm->wantsWhatsapp('receipts') && ($invoice->bill_to_phone || $invoice->tenant?->phone)) {
+                try { $comm->whatsappReceipt($payment->fresh('invoice')); }
+                catch (\Throwable $e) { \Illuminate\Support\Facades\Log::warning('WhatsApp receipt failed', ['payment' => $payment->id, 'error' => $e->getMessage()]); }
+            }
+
             return response()->json([
                 'message' => 'Payment recorded.',
                 'payment' => $payment,
@@ -87,38 +94,7 @@ class PaymentController extends Controller
     /** Receipt/payment voucher PDF for a payment (#151). */
     public function voucher(Payment $payment)
     {
-        $payment->load(['invoice', 'vendorBill.vendor', 'account', 'createdBy']);
-        $isReceipt = $payment->type === 'customer_receipt';
-
-        $building = [
-            'name'    => \App\Models\SystemSetting::get('building_name', 'Haleelo Tower'),
-            'address' => \App\Models\SystemSetting::get('address', 'Mogadishu, Somalia'),
-        ];
-
-        $rows = [
-            'Voucher No.'    => $payment->payment_code,
-            'Type'           => $isReceipt ? 'Receipt (money in)' : 'Vendor Payment (money out)',
-            'Date'           => $payment->payment_date->format('d M Y'),
-            'Payment Method' => ucfirst(str_replace('_', ' ', $payment->payment_method)),
-            'Account'        => $payment->account?->name,
-            ($isReceipt ? 'Received From' : 'Paid To') => $isReceipt
-                ? ($payment->invoice?->billToName() ?? 'Customer')
-                : ($payment->vendorBill?->vendor?->name ?? 'Vendor'),
-            'Reference Doc'  => $payment->invoice?->invoice_code ?? $payment->vendorBill?->bill_code ?? '—',
-            'Bank/Mobile Ref'=> $payment->reference_number ?? '—',
-            'Recorded By'    => $payment->createdBy?->name ?? 'System',
-        ];
-
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdfs.voucher', [
-            'title' => $isReceipt ? 'PAYMENT RECEIPT' : 'PAYMENT VOUCHER',
-            'code'  => $payment->payment_code,
-            'amount'=> $payment->amount,
-            'amountLabel' => $isReceipt ? 'AMOUNT RECEIVED' : 'AMOUNT PAID',
-            'rows'  => $rows,
-            'building' => $building,
-        ]);
-
-        return response($pdf->output(), 200, [
+        return response($this->paymentService->voucherPdf($payment), 200, [
             'Content-Type'        => 'application/pdf',
             'Content-Disposition' => 'inline; filename="' . $payment->payment_code . '.pdf"',
         ]);

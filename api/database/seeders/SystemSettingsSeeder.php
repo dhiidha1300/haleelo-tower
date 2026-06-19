@@ -86,21 +86,69 @@ class SystemSettingsSeeder extends Seeder
                 'description' => 'Number of days from invoice issue to due date',
             ],
 
-            // Email Settings
+            // Email Settings — transport
+            [
+                'key' => 'mail_driver',
+                'value' => 'smtp',
+                'description' => 'Mail transport: smtp (internal server) or resend (fallback API)',
+            ],
+            // SMTP (internal mail server)
+            [
+                'key' => 'smtp_host',
+                'value' => '',
+                'description' => 'SMTP server host (e.g. mail.halelotower.so)',
+            ],
+            [
+                'key' => 'smtp_port',
+                'value' => '587',
+                'description' => 'SMTP server port (587 STARTTLS, 465 SSL, 25 none)',
+            ],
+            [
+                'key' => 'smtp_encryption',
+                'value' => 'tls',
+                'description' => 'SMTP encryption: tls, ssl or none',
+            ],
+            [
+                'key' => 'smtp_username',
+                'value' => '',
+                'description' => 'SMTP authentication username',
+            ],
+            [
+                'key' => 'smtp_password',
+                'value' => '',
+                'description' => 'SMTP authentication password (encrypted at rest)',
+            ],
+            // Shared sender identity (used by both drivers)
+            [
+                'key' => 'mail_from_name',
+                'value' => 'Haleelo Tower',
+                'description' => 'Email sender display name',
+            ],
+            [
+                'key' => 'mail_from_email',
+                'value' => 'noreply@halelotower.so',
+                'description' => 'Email sender (From) address',
+            ],
+            [
+                'key' => 'mail_reply_to',
+                'value' => 'info@halelotower.so',
+                'description' => 'Reply-to email address for outgoing emails',
+            ],
+            // Legacy Resend sender fields (kept for fallback / migration)
             [
                 'key' => 'resend_from_name',
                 'value' => 'Haleelo Tower',
-                'description' => 'Resend API sender name',
+                'description' => 'Resend API sender name (legacy)',
             ],
             [
                 'key' => 'resend_from_email',
                 'value' => 'noreply@halelotower.so',
-                'description' => 'Resend API verified sender email',
+                'description' => 'Resend API verified sender email (legacy)',
             ],
             [
                 'key' => 'resend_reply_to',
                 'value' => 'info@halelotower.so',
-                'description' => 'Reply-to email address for emails',
+                'description' => 'Reply-to email address for emails (legacy)',
             ],
 
             // WhatsApp Settings
@@ -150,7 +198,11 @@ class SystemSettingsSeeder extends Seeder
         ];
 
         foreach ($settings as $setting) {
-            SystemSetting::create($setting);
+            // Idempotent: create missing keys, never overwrite existing values.
+            SystemSetting::firstOrCreate(
+                ['key' => $setting['key']],
+                ['value' => $setting['value'], 'description' => $setting['description']]
+            );
         }
     }
 }

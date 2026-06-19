@@ -67,6 +67,34 @@ export default function JournalPage() {
   const updateLine = (i: number, field: keyof FormLine, value: string) =>
     setLines(lines.map((l, idx) => idx === i ? { ...l, [field]: value } : l));
 
+  // Auto-balance: typing an amount auto-completes the opposite side. For a simple
+  // two-line entry the counter-line mirrors the amount; the engine already rejects
+  // anything unbalanced, so this just saves the second keystroke.
+  const updateAmount = (i: number, value: string) => {
+    setLines(prev => {
+      const next = prev.map((l, idx) => idx === i ? { ...l, amount: value } : l);
+      if (next.length === 2) {
+        const other = i === 0 ? 1 : 0;
+        if (next[other].type !== next[i].type) next[other] = { ...next[other], amount: value };
+      }
+      return next;
+    });
+  };
+
+  // Fill the single empty amount on the deficient side with the exact difference.
+  const autoBalance = () => {
+    setLines(prev => {
+      const d = prev.filter(l => l.type === 'debit').reduce((s, l) => s + (parseFloat(l.amount) || 0), 0);
+      const c = prev.filter(l => l.type === 'credit').reduce((s, l) => s + (parseFloat(l.amount) || 0), 0);
+      const diff = +(d - c).toFixed(2);
+      if (diff === 0) return prev;
+      const needSide = diff > 0 ? 'credit' : 'debit';
+      const emptyIdx = prev.findIndex(l => l.type === needSide && !l.amount);
+      if (emptyIdx === -1) return prev;
+      return prev.map((l, idx) => idx === emptyIdx ? { ...l, amount: Math.abs(diff).toFixed(2) } : l);
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
@@ -153,14 +181,19 @@ export default function JournalPage() {
                   <option value="credit">Credit</option>
                 </select>
                 <input type="number" required min="0.01" step="0.01" value={line.amount}
-                  onChange={e => updateLine(i, 'amount', e.target.value)}
+                  onChange={e => updateAmount(i, e.target.value)}
                   placeholder="0.00"
                   className="col-span-3 px-2 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A052]" />
                 <button type="button" onClick={() => removeLine(i)} disabled={lines.length <= 2}
                   className="col-span-1 text-red-400 hover:text-red-600 disabled:opacity-30 text-lg">×</button>
               </div>
             ))}
-            <button type="button" onClick={addLine} className="text-xs text-[#C9A052] hover:underline font-medium">+ Add line</button>
+            <div className="flex gap-4">
+              <button type="button" onClick={addLine} className="text-xs text-[#C9A052] hover:underline font-medium">+ Add line</button>
+              {!balanced && (
+                <button type="button" onClick={autoBalance} className="text-xs text-[#1B2D4F] hover:underline font-medium">⚖ Auto-balance</button>
+              )}
+            </div>
           </div>
 
           {/* Balance indicator */}

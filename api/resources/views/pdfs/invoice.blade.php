@@ -101,6 +101,9 @@
 
         <table class="totals">
             <tr><td class="label">Subtotal</td><td class="num" style="text-align:right;">${{ number_format($invoice->subtotal, 2) }}</td></tr>
+            @if((float) $invoice->discount_amount > 0)
+            <tr><td class="label">Discount ({{ rtrim(rtrim(number_format($invoice->discount_percent, 2), '0'), '.') }}%)</td><td class="num" style="text-align:right;">− ${{ number_format($invoice->discount_amount, 2) }}</td></tr>
+            @endif
             <tr class="grand"><td>TOTAL DUE</td><td style="text-align:right;">${{ number_format($invoice->total_amount, 2) }}</td></tr>
         </table>
     </div>

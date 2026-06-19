@@ -60,6 +60,9 @@ class InvoiceService
                 'due_date'      => $this->dueDate($issue)->toDateString(),
                 'status'        => 'draft',
                 'created_by'    => $createdBy?->id,
+                // Carry the coupon discount (B5) from the booking to the invoice.
+                'coupon_id'        => $booking->coupon_id,
+                'discount_percent' => $booking->discount_percent,
             ]);
 
             // Line items mapped to revenue COA codes
@@ -80,7 +83,18 @@ class InvoiceService
             if ((float) $booking->cameraman_price > 0) {
                 $this->addLine($invoice, 'Cameraman service', 1, $booking->cameraman_price, '3020');
             }
-            if ((float) $booking->extras_price > 0) {
+            // Itemise selected product services (each with its name + price); fall
+            // back to a single lump line if only a total is present.
+            $extras = is_array($booking->extra_services) ? $booking->extra_services : [];
+            if (!empty($extras)) {
+                foreach ($extras as $svc) {
+                    $name  = is_array($svc) ? ($svc['name'] ?? 'Service') : (string) $svc;
+                    $price = is_array($svc) ? (float) ($svc['price'] ?? 0) : 0;
+                    if ($price > 0) {
+                        $this->addLine($invoice, $name, 1, $price, '3030');
+                    }
+                }
+            } elseif ((float) $booking->extras_price > 0) {
                 $this->addLine($invoice, 'Additional services', 1, $booking->extras_price, '3030');
             }
 
@@ -213,6 +227,17 @@ class InvoiceService
                 ];
             }
 
+            // Coupon discount (B5): debit contra-revenue 3090 so AR(net) + discount = revenue(gross).
+            $discount = (string) ($invoice->discount_amount ?? '0');
+            if (bccomp($discount, '0', 2) > 0) {
+                $lines[] = [
+                    'account_id'  => $this->coaId('3090'),
+                    'type'        => 'debit',
+                    'amount'      => $discount,
+                    'description' => "Sales discount — {$invoice->invoice_code}",
+                ];
+            }
+
             $entry = $this->accountingService->postJournalEntry(
                 $invoice->issue_date->toDateString(),
                 "Invoice {$invoice->invoice_code} issued to {$invoice->billToName()}",
@@ -238,6 +263,30 @@ class InvoiceService
         });
     }
 
+    /**
+     * Re-deliver an already-issued invoice. Does NOT re-post the AR journal —
+     * only the first send posts accounting. Tracks last_sent_at + resend_count.
+     */
+    public function resend(Invoice $invoice): Invoice
+    {
+        if (!in_array($invoice->status, ['sent', 'partial', 'overdue'], true)) {
+            throw new \InvalidArgumentException('Only an already-sent invoice can be resent.');
+        }
+
+        $invoice->update([
+            'last_sent_at' => now(),
+            'resend_count' => ($invoice->resend_count ?? 0) + 1,
+        ]);
+
+        try {
+            dispatch(new \App\Jobs\SendInvoiceJob($invoice->fresh()));
+        } catch (\Exception $e) {
+            Log::error('Failed to dispatch invoice resend', ['invoice_id' => $invoice->id, 'error' => $e->getMessage()]);
+        }
+
+        return $invoice->fresh(['lineItems', 'payments']);
+    }
+
     public function generateMonthlyInvoices(): int
     {
         $leases = Lease::where('status', 'active')->with(['tenant', 'space'])->get();
@@ -261,9 +310,15 @@ class InvoiceService
     {
         $invoice->load('lineItems');
         $subtotal = (string) $invoice->lineItems->sum('line_total');
+
+        // Coupon discount (B5): contra-revenue. total = gross subtotal − discount.
+        $pct      = (float) ($invoice->discount_percent ?? 0);
+        $discount = $pct > 0 ? bcdiv(bcmul($subtotal, (string) $pct, 4), '100', 2) : '0';
+
         $invoice->update([
-            'subtotal'     => $subtotal,
-            'total_amount' => $subtotal, // tax defaulted to 0 in Pilot
+            'subtotal'        => $subtotal,
+            'discount_amount' => $discount,
+            'total_amount'    => bcsub($subtotal, $discount, 2),
         ]);
     }
 

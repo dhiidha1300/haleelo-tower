@@ -102,9 +102,49 @@ class AccountController extends Controller
         return null;
     }
 
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        $accounts = Account::with('chartOfAccount')->get()->map(fn ($a) => [
+        // Active-only by default (so selection dropdowns hide inactive accounts).
+        // The management page passes ?all=1 to also see/reactivate inactive ones.
+        $query = Account::with('chartOfAccount');
+        if (!$request->boolean('all')) {
+            $query->where('active', true);
+        }
+
+        $accounts = $query->get()->map(fn ($a) => $this->payload($a));
+
+        $totalBalance = $accounts->reduce(fn ($carry, $a) => bcadd($carry, $a['balance'], 2), '0');
+
+        return response()->json([
+            'accounts'      => $accounts,
+            'total_balance' => $totalBalance,
+        ]);
+    }
+
+    /** Upload a ZAAD/Edahab/bank statement and auto-match it against this account. */
+    public function reconcile(Request $request, Account $account, \App\Services\ReconciliationService $svc): JsonResponse
+    {
+        $request->validate(['statement' => 'required|file|mimes:csv,txt,xlsx,xls,pdf|max:10240']);
+        try {
+            $rows = $svc->parse($request->file('statement'));
+            return response()->json($svc->reconcile($account, $rows));
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+    }
+
+    /** Mark the matched transactions as reconciled. */
+    public function reconcileConfirm(Request $request, Account $account, \App\Services\ReconciliationService $svc): JsonResponse
+    {
+        $data = $request->validate(['transaction_ids' => 'required|array', 'transaction_ids.*' => 'integer']);
+        $count = $svc->confirm($account, $data['transaction_ids']);
+        $this->auditService->log('updated', Account::class, $account->id, null, ['reconciled_transactions' => $count]);
+        return response()->json(['message' => "{$count} transaction(s) marked reconciled."]);
+    }
+
+    private function payload(Account $a): array
+    {
+        return [
             'id'                 => $a->id,
             'name'               => $a->name,
             'type'               => $a->type,
@@ -113,14 +153,74 @@ class AccountController extends Controller
             'notes'              => $a->notes,
             'coa_code'           => $a->chartOfAccount?->code,
             'balance'            => $a->balance(),
+        ];
+    }
+
+    /** Edit an account's name / number / notes. COA code is immutable here. */
+    public function update(Request $request, Account $account): JsonResponse
+    {
+        $data = $request->validate([
+            'name'               => 'sometimes|string|max:255',
+            'account_identifier' => 'sometimes|nullable|string|max:100',
+            'notes'              => 'sometimes|nullable|string|max:1000',
         ]);
 
-        $totalBalance = $accounts->reduce(fn ($carry, $a) => bcadd($carry, $a['balance'], 2), '0');
+        $old = $account->only(['name', 'account_identifier', 'notes']);
+        $account->update($data);
 
-        return response()->json([
-            'accounts'      => $accounts,
-            'total_balance' => $totalBalance,
+        // Keep the linked Chart-of-Accounts entry name in sync with the account name.
+        if (array_key_exists('name', $data) && $account->chart_of_account_id) {
+            ChartOfAccount::where('id', $account->chart_of_account_id)->update(['name' => $data['name']]);
+        }
+
+        $this->auditService->log('updated', Account::class, $account->id, $old, $account->only(['name', 'account_identifier', 'notes']));
+
+        return response()->json($this->payload($account->fresh('chartOfAccount')));
+    }
+
+    /**
+     * Activate / deactivate an account. Deactivating an account that still holds a
+     * balance first sweeps it to a chosen destination via a balanced transfer, so
+     * the books stay balanced.
+     */
+    public function setActive(Request $request, Account $account): JsonResponse
+    {
+        $data = $request->validate([
+            'active'                 => 'required|boolean',
+            'destination_account_id' => 'nullable|exists:accounts,id|different:' . $account->id,
         ]);
+
+        if ($data['active']) {
+            $account->update(['active' => true]);
+            $this->auditService->log('updated', Account::class, $account->id, ['active' => false], ['active' => true]);
+            return response()->json($this->payload($account->fresh('chartOfAccount')));
+        }
+
+        // Deactivating — handle any remaining balance.
+        $balance = $account->balance();
+        if (bccomp($balance, '0', 2) > 0) {
+            if (empty($data['destination_account_id'])) {
+                return response()->json([
+                    'message'         => 'This account holds a balance of $' . $balance . '. Choose a destination account to transfer it to before deactivating.',
+                    'requires_sweep'  => true,
+                    'balance'         => $balance,
+                ], 422);
+            }
+            $destination = Account::findOrFail($data['destination_account_id']);
+            $this->accountingService->transfer(
+                $account, $destination, $balance, now()->toDateString(),
+                'Balance sweep on deactivation of ' . $account->name, Auth::user()
+            );
+        } elseif (bccomp($balance, '0', 2) < 0) {
+            return response()->json([
+                'message' => 'This account has a negative balance of $' . $balance . '. Please resolve it manually before deactivating.',
+            ], 422);
+        }
+
+        $account->update(['active' => false]);
+        $this->auditService->log('updated', Account::class, $account->id, ['active' => true], ['active' => false, 'swept_to' => $data['destination_account_id'] ?? null]);
+
+        return response()->json($this->payload($account->fresh('chartOfAccount')));
     }
 
     public function transactions(Request $request, Account $account): JsonResponse

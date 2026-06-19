@@ -69,6 +69,7 @@ export function WhatsAppSettings({ settings, onUpdate }: WhatsAppSettingsProps) 
     whatsapp_account_sid: '',
     whatsapp_auth_token: '',
     whatsapp_sender_number: '',
+    whatsapp_template_lang: 'en_US',
   });
   const [testNumber, setTestNumber] = useState('');
   const [loading, setLoading] = useState(false);
@@ -84,6 +85,7 @@ export function WhatsAppSettings({ settings, onUpdate }: WhatsAppSettingsProps) 
         whatsapp_account_sid: settings.whatsapp_account_sid || '',
         whatsapp_auth_token: settings.whatsapp_auth_token || '',
         whatsapp_sender_number: settings.whatsapp_sender_number || '',
+        whatsapp_template_lang: settings.whatsapp_template_lang || 'en_US',
       });
     }
   }, [settings]);
@@ -105,6 +107,7 @@ export function WhatsAppSettings({ settings, onUpdate }: WhatsAppSettingsProps) 
         settingsAPI.updateSingle('whatsapp_account_sid', form.whatsapp_account_sid, cfg.sidLabel),
         settingsAPI.updateSingle('whatsapp_auth_token', form.whatsapp_auth_token, cfg.tokenLabel),
         settingsAPI.updateSingle('whatsapp_sender_number', form.whatsapp_sender_number, 'WhatsApp sender number'),
+        settingsAPI.updateSingle('whatsapp_template_lang', form.whatsapp_template_lang, 'WhatsApp template language code'),
       ]);
       showMsg('✓ WhatsApp configuration saved');
       onUpdate();
@@ -239,6 +242,23 @@ export function WhatsAppSettings({ settings, onUpdate }: WhatsAppSettingsProps) 
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#C9A052] font-mono text-sm"
           />
           <p className="text-xs text-gray-500 mt-1">{cfg.senderHint}</p>
+        </div>
+      )}
+
+      {/* Template language — Cloud API templates must match the language created in Meta */}
+      {provider === 'cloud_api' && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Template Language Code</label>
+          <input
+            type="text"
+            value={form.whatsapp_template_lang}
+            onChange={e => setForm(p => ({ ...p, whatsapp_template_lang: e.target.value }))}
+            placeholder="en_US"
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#C9A052] font-mono text-sm"
+          />
+          <p className="text-xs text-gray-500 mt-1">
+            Must match the language you picked when creating the templates in Meta — <span className="font-mono">en_US</span> for "English (US)", <span className="font-mono">en</span> for "English". A mismatch causes a "template does not exist" error.
+          </p>
         </div>
       )}
 

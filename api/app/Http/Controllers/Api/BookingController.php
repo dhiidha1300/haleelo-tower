@@ -111,13 +111,32 @@ class BookingController extends Controller
             'catering_price'     => 'nullable|numeric|min:0',
             'dj_price'           => 'nullable|numeric|min:0',
             'cameraman_price'    => 'nullable|numeric|min:0',
+            'extra_services'         => 'nullable|array',
+            'extra_services.*.name'  => 'required_with:extra_services|string|max:255',
+            'extra_services.*.price' => 'required_with:extra_services|numeric|min:0',
+            'extras_price'       => 'nullable|numeric|min:0',
             'notes'              => 'nullable|string',
+            'coupon_code'        => 'nullable|string',
         ]);
 
         try {
             $booking = $this->bookingService->createBooking($request->all(), Auth::user());
 
-            return response()->json($booking->load(['product.floor', 'statusLogs', 'cateringPackage']), 201);
+            // Apply a staff coupon (B5): discount the booking total → flows to the invoice.
+            if ($request->filled('coupon_code')) {
+                $coupons = app(\App\Services\CouponService::class);
+                $coupon  = $coupons->validateCode($request->input('coupon_code')); // throws if invalid
+                $pct     = (float) $coupon->discount_percent;
+                $booking->update([
+                    'coupon_id'        => $coupon->id,
+                    'discount_percent' => $pct,
+                    'discount_amount'  => $coupons->discountAmount((string) $booking->total_price, $pct),
+                ]);
+            }
+
+            return response()->json($booking->fresh()->load(['product.floor', 'statusLogs', 'cateringPackage']), 201);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['error' => 'Invalid Coupon', 'message' => $e->getMessage()], 422);
         } catch (\Exception $e) {
             return response()->json(['error' => 'Error', 'message' => $e->getMessage()], 422);
         }
@@ -182,8 +201,8 @@ class BookingController extends Controller
             'product_id'   => 'required|exists:spaces,id',
             'session_type' => 'required|string',
             'booking_date' => 'required|date',
-            'start_time'   => 'required|date_format:H:i',
-            'end_time'     => 'required|date_format:H:i',
+            'start_time'   => 'nullable|date_format:H:i',
+            'end_time'     => 'nullable|date_format:H:i',
             'exclude_id'   => 'nullable|integer',
         ]);
 
