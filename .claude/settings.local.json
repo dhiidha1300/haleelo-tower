@@ -11,7 +11,21 @@
       "Bash(npm root *)",
       "Bash(node -e \"require\\('/usr/share/npm/node_modules/docx'\\); console.log\\('ok'\\)\")",
       "Bash(node -e \"require\\('C:/Users/axmed/AppData/Roaming/npm/node_modules/docx'\\); console.log\\('docx found'\\)\")",
-      "Bash(node -e \"require\\('C:/Users/axmed/AppData/Roaming/npm/node_modules/pptxgenjs'\\); console.log\\('pptxgenjs found'\\)\")"
+      "Bash(node -e \"require\\('C:/Users/axmed/AppData/Roaming/npm/node_modules/pptxgenjs'\\); console.log\\('pptxgenjs found'\\)\")",
+      "Bash(pg_isready -h localhost)",
+      "Bash(echo \"exit:$?\")",
+      "Bash(xargs cat)",
+      "Bash(php -l app/Services/WaitlistService.php)",
+      "Bash(php artisan *)",
+      "Bash(npx tsc *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://127.0.0.1:8000/api/health)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://127.0.0.1:8000/)",
+      "Bash(tail -n 0 storage/logs/laravel.log)",
+      "Bash(wc -l storage/logs/laravel.log)",
+      "Bash(xargs grep -n \"sendOtp\" -A 20)",
+      "Bash(xargs grep -n \"isConfigured\\\\|function send\\(\" -A 15)",
+      "Bash(ls -la ~/.ssh/ 2>&1)",
+      "Bash(ssh -o BatchMode=yes -o ConnectTimeout=5 -o StrictHostKeyChecking=accept-new root@2.24.141.124 \"echo connected && whoami && cat /etc/os-release | head -5\")"
     ]
   }
 }
