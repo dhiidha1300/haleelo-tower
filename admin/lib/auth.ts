@@ -16,7 +16,7 @@ export interface AuthContextType {
   user: User | null;
   loading: boolean;
   isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<{ requires_2fa: boolean; user_id?: number; user?: User; token?: string }>;
+  login: (email: string, password: string) => Promise<{ requires_2fa: boolean; user_id?: number; user?: User; token?: string; phone_hint?: string; whatsapp_configured?: boolean }>;
   verify2FA: (userId: number, otp: string) => Promise<void>;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
