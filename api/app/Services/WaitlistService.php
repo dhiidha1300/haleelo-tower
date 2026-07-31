@@ -18,7 +18,8 @@ class WaitlistService
     public function __construct(
         private BookingService $bookings,
         private WhatsAppService $whatsapp,
-        private EmailService $email
+        private EmailService $email,
+        private AuditService $audit
     ) {}
 
     public function limit(): int
@@ -92,12 +93,23 @@ class WaitlistService
         return $booking;
     }
 
-    /** Expire waiting-list entries whose slot date has passed. Returns count expired. */
+    /**
+     * Remove waiting-list entries whose slot date has passed — there's nothing to wait
+     * for once the date is gone. Also sweeps up any legacy 'expired' rows left over from
+     * before this was a hard delete. Returns the number of entries removed.
+     */
     public function expirePast(): int
     {
-        return WaitingList::where('status', 'waiting')
+        $stale = WaitingList::whereIn('status', ['waiting', 'expired'])
             ->whereDate('booking_date', '<', now()->toDateString())
-            ->update(['status' => 'expired']);
+            ->get();
+
+        foreach ($stale as $entry) {
+            $this->audit->log('deleted', WaitingList::class, $entry->id, $entry->toArray(), null);
+            $entry->delete();
+        }
+
+        return $stale->count();
     }
 
     /** Confirmation when a customer joins the waiting list. */

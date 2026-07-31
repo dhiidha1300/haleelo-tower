@@ -13,7 +13,7 @@ interface Row {
 
 const STATUS: Record<string, string> = {
   waiting: 'bg-amber-100 text-amber-800', cancelled: 'bg-gray-100 text-gray-500',
-  converted: 'bg-green-100 text-green-700', expired: 'bg-red-100 text-red-600',
+  converted: 'bg-green-100 text-green-700',
 };
 const CHANNEL_ICON: Record<string, string> = { email: '📧', whatsapp: '💬', both: '📧💬' };
 
@@ -102,7 +102,7 @@ export default function WaitingListPage() {
 
       <div className="bg-white rounded-lg shadow p-4">
         <select value={status} onChange={e => setStatus(e.target.value)} className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A052]">
-          <option value="">All</option><option value="waiting">Waiting</option><option value="converted">Converted</option><option value="cancelled">Cancelled</option><option value="expired">Expired</option>
+          <option value="">All</option><option value="waiting">Waiting</option><option value="converted">Converted</option><option value="cancelled">Cancelled</option>
         </select>
       </div>
 

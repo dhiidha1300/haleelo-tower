@@ -17,37 +17,33 @@ const MENU_ITEMS: MenuItem[] = [
   { label: 'Dashboard',   icon: '📊', href: '/dashboard',           roles: ['super_admin', 'admin', 'operations', 'finance'] },
   { label: 'Inbox',       icon: '🔔', href: '/dashboard/inbox',     roles: ['super_admin', 'admin', 'operations', 'finance'] },
 
-  // ── Phase 2: Booking System ───────────────
-  { label: 'Products',    icon: '🏢', href: '/dashboard/products',  roles: ['super_admin', 'admin', 'operations', 'finance'],    section: 'Bookings' },
-  { label: 'Bookings',    icon: '📅', href: '/dashboard/bookings',  roles: ['super_admin', 'admin', 'operations', 'finance'],    section: 'Bookings' },
-  { label: 'Waiting List',icon: '⏳', href: '/dashboard/waiting-list', roles: ['super_admin', 'admin', 'operations'],            section: 'Bookings' },
-  { label: 'Tenants',     icon: '🏬', href: '/dashboard/tenants',   roles: ['super_admin', 'admin', 'operations'],                section: 'Bookings' },
-  { label: 'Leases',      icon: '📄', href: '/dashboard/leases',    roles: ['super_admin', 'admin', 'operations', 'finance'],    section: 'Bookings' },
-  { label: 'Maintenance', icon: '🔧', href: '/dashboard/maintenance', roles: ['super_admin', 'admin', 'operations', 'finance'], section: 'Bookings' },
+  // ── Bookings & Tenants ─────────────────────
+  { label: 'Products',    icon: '🏢', href: '/dashboard/products',  roles: ['super_admin', 'admin', 'operations', 'finance'],    section: 'Bookings & Tenants' },
+  { label: 'Bookings',    icon: '📅', href: '/dashboard/bookings',  roles: ['super_admin', 'admin', 'operations', 'finance'],    section: 'Bookings & Tenants' },
+  { label: 'Waiting List',icon: '⏳', href: '/dashboard/waiting-list', roles: ['super_admin', 'admin', 'operations'],            section: 'Bookings & Tenants' },
+  { label: 'Tenants',     icon: '🏬', href: '/dashboard/tenants',   roles: ['super_admin', 'admin', 'operations'],                section: 'Bookings & Tenants' },
+  { label: 'Leases',      icon: '📄', href: '/dashboard/leases',    roles: ['super_admin', 'admin', 'operations', 'finance'],    section: 'Bookings & Tenants' },
+  { label: 'Maintenance', icon: '🔧', href: '/dashboard/maintenance', roles: ['super_admin', 'admin', 'operations', 'finance'], section: 'Bookings & Tenants' },
 
-  // ── Phase 3: Finance ──────────────────────
-  { label: 'Invoices',          icon: '🧾', href: '/dashboard/finance/invoices',             roles: ['super_admin', 'admin', 'operations', 'finance'], section: 'Finance' },
-  { label: 'Payments',          icon: '💵', href: '/dashboard/finance/payments',             roles: ['super_admin', 'admin', 'finance'], section: 'Finance' },
-  { label: 'Expenses',          icon: '🧱', href: '/dashboard/finance/expenses',             roles: ['super_admin', 'finance'], section: 'Finance' },
-  { label: 'Electricity',       icon: '⚡', href: '/dashboard/finance/electricity',          roles: ['super_admin', 'admin', 'finance'], section: 'Finance' },
-  { label: 'Reports',           icon: '📊', href: '/dashboard/finance/reports',              roles: ['super_admin', 'admin', 'finance'], section: 'Finance' },
+  // ── Finance & Accounting (merged: billing, procurement, ledger, reports) ──
+  { label: 'Invoices',          icon: '🧾', href: '/dashboard/finance/invoices',             roles: ['super_admin', 'admin', 'operations', 'finance'], section: 'Finance & Accounting' },
+  { label: 'Payments',          icon: '💵', href: '/dashboard/finance/payments',             roles: ['super_admin', 'admin', 'finance'], section: 'Finance & Accounting' },
+  { label: 'Expenses',          icon: '🧱', href: '/dashboard/finance/expenses',             roles: ['super_admin', 'finance'], section: 'Finance & Accounting' },
+  { label: 'Electricity',       icon: '⚡', href: '/dashboard/finance/electricity',          roles: ['super_admin', 'admin', 'finance'], section: 'Finance & Accounting' },
+  { label: 'Vendors',           icon: '🚚', href: '/dashboard/procurement/vendors',          roles: ['super_admin', 'admin', 'finance'], section: 'Finance & Accounting' },
+  { label: 'Purchase Orders',   icon: '📦', href: '/dashboard/procurement/purchase-orders',  roles: ['super_admin', 'admin', 'finance'], section: 'Finance & Accounting' },
+  { label: 'Vendor Bills',      icon: '📑', href: '/dashboard/procurement/vendor-bills',     roles: ['super_admin', 'finance'], section: 'Finance & Accounting' },
+  { label: 'Accounts',          icon: '🏦', href: '/dashboard/accounting/accounts',          roles: ['super_admin', 'admin', 'finance'], section: 'Finance & Accounting' },
+  { label: 'Chart of Accounts', icon: '📒', href: '/dashboard/accounting/chart-of-accounts', roles: ['super_admin', 'admin', 'finance'], section: 'Finance & Accounting' },
+  { label: 'Journal',           icon: '📝', href: '/dashboard/accounting/journal',           roles: ['super_admin', 'admin', 'finance'], section: 'Finance & Accounting' },
+  { label: 'Trial Balance',     icon: '⚖️', href: '/dashboard/accounting/trial-balance',     roles: ['super_admin', 'admin', 'finance'], section: 'Finance & Accounting' },
+  { label: 'Reports',           icon: '📊', href: '/dashboard/finance/reports',              roles: ['super_admin', 'admin', 'finance'], section: 'Finance & Accounting' },
 
-  // ── Phase 3: Procurement ──────────────────
-  { label: 'Vendors',           icon: '🚚', href: '/dashboard/procurement/vendors',          roles: ['super_admin', 'admin', 'finance'], section: 'Procurement' },
-  { label: 'Purchase Orders',   icon: '📦', href: '/dashboard/procurement/purchase-orders',  roles: ['super_admin', 'admin', 'finance'], section: 'Procurement' },
-  { label: 'Vendor Bills',      icon: '📑', href: '/dashboard/procurement/vendor-bills',     roles: ['super_admin', 'finance'], section: 'Procurement' },
-
-  // ── Phase 3: HR & Payroll ─────────────────
+  // ── HR & Payroll ───────────────────────────
   { label: 'Employees',         icon: '👤', href: '/dashboard/hr/employees',                 roles: ['super_admin', 'finance'], section: 'HR & Payroll' },
   { label: 'Attendance',        icon: '🗓️', href: '/dashboard/hr/attendance',                roles: ['super_admin', 'admin', 'finance'], section: 'HR & Payroll' },
   { label: 'Leave Requests',    icon: '🌴', href: '/dashboard/hr/leave',                      roles: ['super_admin', 'admin', 'finance'], section: 'HR & Payroll' },
   { label: 'Payroll',           icon: '💸', href: '/dashboard/hr/payroll',                    roles: ['super_admin', 'finance'], section: 'HR & Payroll' },
-
-  // ── Phase 3: Accounting ───────────────────
-  { label: 'Chart of Accounts', icon: '📒', href: '/dashboard/accounting/chart-of-accounts', roles: ['super_admin', 'admin', 'finance'], section: 'Accounting' },
-  { label: 'Accounts',          icon: '🏦', href: '/dashboard/accounting/accounts',          roles: ['super_admin', 'admin', 'finance'], section: 'Accounting' },
-  { label: 'Journal',           icon: '📝', href: '/dashboard/accounting/journal',           roles: ['super_admin', 'admin', 'finance'], section: 'Accounting' },
-  { label: 'Trial Balance',     icon: '⚖️', href: '/dashboard/accounting/trial-balance',     roles: ['super_admin', 'admin', 'finance'], section: 'Accounting' },
 
   // ── System ────────────────────────────────
   { label: 'Coupons',     icon: '🎟️', href: '/dashboard/coupons',   roles: ['super_admin'],             section: 'System' },

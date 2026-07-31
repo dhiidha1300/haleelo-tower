@@ -11,6 +11,11 @@ interface RangeRow {
 }
 interface TBR { rows: RangeRow[]; totals: any; from: string | null; to: string; balanced: boolean; }
 
+interface CompareRow {
+  code: string; name: string; type: string;
+  aDebit: number; aCredit: number; bDebit: number; bCredit: number;
+}
+
 const TYPE_LABELS: Record<string, string> = {
   asset: 'Assets', liability: 'Liabilities', equity: 'Equity', revenue: 'Revenue', expense: 'Expenses',
 };
@@ -18,10 +23,8 @@ const TYPE_ORDER = ['asset', 'liability', 'equity', 'revenue', 'expense'];
 
 const fmt = (v: string | number) => {
   const n = typeof v === 'string' ? parseFloat(v) : v;
-  return n === 0 ? '—' : `$${Math.abs(n).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+  return !n ? '—' : `$${Math.abs(n).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
 };
-const netOf = (d: string, c: string) => parseFloat(d || '0') - parseFloat(c || '0'); // + = debit side
-const fmtNet = (v: number) => v === 0 ? '—' : `${fmt(v)} ${v > 0 ? 'Dr' : 'Cr'}`;
 
 const startOfYear = () => `${new Date().getFullYear()}-01-01`;
 const today = () => new Date().toISOString().split('T')[0];
@@ -31,6 +34,11 @@ const monthRange = (offset: number) => {
   const to = new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().split('T')[0];
   return { from, to };
 };
+
+// Light gold tint used to mark the "Selected Period" columns as the active filter
+const PERIOD_TINT_HEAD = 'bg-[#C9A052]/20';
+const PERIOD_TINT_ROW = 'bg-[#C9A052]/5';
+const PERIOD_TINT_TOTAL = 'bg-[#C9A052]/15';
 
 export default function TrialBalancePage() {
   const [mode, setMode] = useState<'range' | 'compare'>('range');
@@ -66,13 +74,18 @@ export default function TrialBalancePage() {
   const grouped = (rows: RangeRow[]) =>
     TYPE_ORDER.map(type => ({ type, rows: rows.filter(r => r.type === type) })).filter(g => g.rows.length > 0);
 
-  // Merge compare rows by code → closing nets for A & B
-  const compareRows = () => {
-    const map = new Map<string, { code: string; name: string; type: string; a: number; b: number }>();
-    (cmpA?.rows ?? []).forEach(r => map.set(r.code, { code: r.code, name: r.name, type: r.type, a: netOf(r.closing_debit, r.closing_credit), b: 0 }));
+  // Merge compare rows by code → each period's ending Debit/Credit split
+  const compareRows = (): CompareRow[] => {
+    const map = new Map<string, CompareRow>();
+    (cmpA?.rows ?? []).forEach(r => map.set(r.code, {
+      code: r.code, name: r.name, type: r.type,
+      aDebit: parseFloat(r.closing_debit || '0'), aCredit: parseFloat(r.closing_credit || '0'),
+      bDebit: 0, bCredit: 0,
+    }));
     (cmpB?.rows ?? []).forEach(r => {
-      const e = map.get(r.code) ?? { code: r.code, name: r.name, type: r.type, a: 0, b: 0 };
-      e.b = netOf(r.closing_debit, r.closing_credit); map.set(r.code, e);
+      const e = map.get(r.code) ?? { code: r.code, name: r.name, type: r.type, aDebit: 0, aCredit: 0, bDebit: 0, bCredit: 0 };
+      e.bDebit = parseFloat(r.closing_debit || '0'); e.bCredit = parseFloat(r.closing_credit || '0');
+      map.set(r.code, e);
     });
     return Array.from(map.values());
   };
@@ -82,7 +95,7 @@ export default function TrialBalancePage() {
       <div className="flex justify-between items-center flex-wrap gap-4">
         <div>
           <h1 className="text-3xl font-bold text-[#1B2D4F]">Trial Balance</h1>
-          <p className="text-gray-600">Opening &amp; closing balances over a date range, with period comparison</p>
+          <p className="text-gray-600">Initial and ending balances for the selected period, broken out by debit and credit</p>
         </div>
         <div className="flex gap-1 bg-gray-100 p-1 rounded-xl">
           {(['range', 'compare'] as const).map(m => (
@@ -114,7 +127,7 @@ export default function TrialBalancePage() {
                 </p>
               </div>
               <div className="text-right text-sm text-gray-500">
-                Closing Dr <span className="font-semibold text-[#1B2D4F]">{fmt(tb.totals.cd)}</span> · Cr <span className="font-semibold text-[#1B2D4F]">{fmt(tb.totals.cc)}</span>
+                Ending Balance — Debit <span className="font-semibold text-[#1B2D4F]">{fmt(tb.totals.cd)}</span> · Credit <span className="font-semibold text-[#1B2D4F]">{fmt(tb.totals.cc)}</span>
               </div>
             </div>
           )}
@@ -123,37 +136,51 @@ export default function TrialBalancePage() {
           : !tb || tb.rows.length === 0 ? <div className="text-center py-12 text-gray-500">No account activity in this range.</div>
           : (
             <div className="bg-white rounded-lg shadow overflow-x-auto">
-              <table className="w-full min-w-[720px]">
+              <table className="w-full min-w-[900px]">
                 <thead className="bg-[#1B2D4F] text-white">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase">Account</th>
-                    <th className="px-4 py-3 text-right text-xs font-semibold uppercase">Opening</th>
-                    <th className="px-4 py-3 text-right text-xs font-semibold uppercase">Debit</th>
-                    <th className="px-4 py-3 text-right text-xs font-semibold uppercase">Credit</th>
-                    <th className="px-4 py-3 text-right text-xs font-semibold uppercase">Closing</th>
+                    <th rowSpan={2} className="px-4 py-3 text-left text-xs font-semibold uppercase align-bottom">Account</th>
+                    <th colSpan={2} className="px-4 py-2 text-center text-xs font-semibold uppercase border-l border-white/10">Initial Balance</th>
+                    <th colSpan={2} className={`px-4 py-2 text-center text-xs font-semibold uppercase border-l border-white/10 ${PERIOD_TINT_HEAD}`}>
+                      Selected Period
+                      <div className="text-[10px] font-normal normal-case text-white/70">{tb.from ?? 'start'} → {tb.to}</div>
+                    </th>
+                    <th colSpan={2} className="px-4 py-2 text-center text-xs font-semibold uppercase border-l border-white/10">Ending Balance</th>
+                  </tr>
+                  <tr>
+                    <th className="px-4 py-2 text-right text-[11px] font-medium uppercase border-l border-white/10 text-white/80">Debit</th>
+                    <th className="px-4 py-2 text-right text-[11px] font-medium uppercase text-white/80">Credit</th>
+                    <th className={`px-4 py-2 text-right text-[11px] font-medium uppercase border-l border-white/10 text-white/90 ${PERIOD_TINT_HEAD}`}>Debit</th>
+                    <th className={`px-4 py-2 text-right text-[11px] font-medium uppercase text-white/90 ${PERIOD_TINT_HEAD}`}>Credit</th>
+                    <th className="px-4 py-2 text-right text-[11px] font-medium uppercase border-l border-white/10 text-white/80">Debit</th>
+                    <th className="px-4 py-2 text-right text-[11px] font-medium uppercase text-white/80">Credit</th>
                   </tr>
                 </thead>
                 <tbody>
                   {grouped(tb.rows).map(group => (
                     <Fragment key={group.type}>
-                      <tr className="bg-gray-100"><td colSpan={5} className="px-4 py-1.5 text-xs font-semibold text-gray-500 uppercase">{TYPE_LABELS[group.type]}</td></tr>
+                      <tr className="bg-gray-100"><td colSpan={7} className="px-4 py-1.5 text-xs font-semibold text-gray-500 uppercase">{TYPE_LABELS[group.type]}</td></tr>
                       {group.rows.map(r => (
                         <tr key={r.code} className="border-b hover:bg-gray-50">
                           <td className="px-4 py-2.5 text-sm text-gray-700"><span className="font-mono text-xs text-gray-400 mr-2">{r.code}</span>{r.name}</td>
-                          <td className="px-4 py-2.5 text-right text-sm text-gray-500">{fmtNet(netOf(r.opening_debit, r.opening_credit))}</td>
-                          <td className="px-4 py-2.5 text-right text-sm text-gray-700">{fmt(r.period_debit)}</td>
-                          <td className="px-4 py-2.5 text-right text-sm text-gray-700">{fmt(r.period_credit)}</td>
-                          <td className="px-4 py-2.5 text-right text-sm font-medium text-[#1B2D4F]">{fmtNet(netOf(r.closing_debit, r.closing_credit))}</td>
+                          <td className="px-4 py-2.5 text-right text-sm text-gray-600 border-l border-gray-100">{fmt(r.opening_debit)}</td>
+                          <td className="px-4 py-2.5 text-right text-sm text-gray-600">{fmt(r.opening_credit)}</td>
+                          <td className={`px-4 py-2.5 text-right text-sm text-gray-700 border-l border-gray-100 ${PERIOD_TINT_ROW}`}>{fmt(r.period_debit)}</td>
+                          <td className={`px-4 py-2.5 text-right text-sm text-gray-700 ${PERIOD_TINT_ROW}`}>{fmt(r.period_credit)}</td>
+                          <td className="px-4 py-2.5 text-right text-sm font-medium text-[#1B2D4F] border-l border-gray-100">{fmt(r.closing_debit)}</td>
+                          <td className="px-4 py-2.5 text-right text-sm font-medium text-[#1B2D4F]">{fmt(r.closing_credit)}</td>
                         </tr>
                       ))}
                     </Fragment>
                   ))}
                   <tr className="bg-gray-50 border-t-2 border-[#1B2D4F] font-bold text-[#1B2D4F]">
                     <td className="px-4 py-3 text-sm text-right">TOTALS</td>
-                    <td className="px-4 py-3 text-right text-sm">{fmt(netOf(tb.totals.od, tb.totals.oc))}</td>
-                    <td className="px-4 py-3 text-right text-sm">{fmt(tb.totals.pd)}</td>
-                    <td className="px-4 py-3 text-right text-sm">{fmt(tb.totals.pc)}</td>
-                    <td className="px-4 py-3 text-right text-sm">Dr {fmt(tb.totals.cd)} / Cr {fmt(tb.totals.cc)}</td>
+                    <td className="px-4 py-3 text-right text-sm border-l border-gray-200">{fmt(tb.totals.od)}</td>
+                    <td className="px-4 py-3 text-right text-sm">{fmt(tb.totals.oc)}</td>
+                    <td className={`px-4 py-3 text-right text-sm border-l border-gray-200 ${PERIOD_TINT_TOTAL}`}>{fmt(tb.totals.pd)}</td>
+                    <td className={`px-4 py-3 text-right text-sm ${PERIOD_TINT_TOTAL}`}>{fmt(tb.totals.pc)}</td>
+                    <td className="px-4 py-3 text-right text-sm border-l border-gray-200">{fmt(tb.totals.cd)}</td>
+                    <td className="px-4 py-3 text-right text-sm">{fmt(tb.totals.cc)}</td>
                   </tr>
                 </tbody>
               </table>
@@ -183,13 +210,25 @@ export default function TrialBalancePage() {
           : !cmpA || !cmpB ? <div className="text-center py-12 text-gray-500">Pick two periods and press Compare.</div>
           : (
             <div className="bg-white rounded-lg shadow overflow-x-auto">
-              <table className="w-full min-w-[640px]">
+              <table className="w-full min-w-[820px]">
                 <thead className="bg-[#1B2D4F] text-white">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase">Account</th>
-                    <th className="px-4 py-3 text-right text-xs font-semibold uppercase">Period A<br/><span className="font-normal text-white/60">{aFrom} → {aTo}</span></th>
-                    <th className="px-4 py-3 text-right text-xs font-semibold uppercase">Period B<br/><span className="font-normal text-white/60">{bFrom} → {bTo}</span></th>
-                    <th className="px-4 py-3 text-right text-xs font-semibold uppercase">Variance</th>
+                    <th rowSpan={2} className="px-4 py-3 text-left text-xs font-semibold uppercase align-bottom">Account</th>
+                    <th colSpan={2} className="px-4 py-2 text-center text-xs font-semibold uppercase border-l border-white/10">
+                      Period A
+                      <div className="text-[10px] font-normal normal-case text-white/60">{aFrom} → {aTo}</div>
+                    </th>
+                    <th colSpan={2} className="px-4 py-2 text-center text-xs font-semibold uppercase border-l border-white/10">
+                      Period B
+                      <div className="text-[10px] font-normal normal-case text-white/60">{bFrom} → {bTo}</div>
+                    </th>
+                    <th rowSpan={2} className="px-4 py-3 text-right text-xs font-semibold uppercase border-l border-white/10 align-bottom">Variance</th>
+                  </tr>
+                  <tr>
+                    <th className="px-4 py-2 text-right text-[11px] font-medium uppercase border-l border-white/10 text-white/80">Debit</th>
+                    <th className="px-4 py-2 text-right text-[11px] font-medium uppercase text-white/80">Credit</th>
+                    <th className="px-4 py-2 text-right text-[11px] font-medium uppercase border-l border-white/10 text-white/80">Debit</th>
+                    <th className="px-4 py-2 text-right text-[11px] font-medium uppercase text-white/80">Credit</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -198,15 +237,19 @@ export default function TrialBalancePage() {
                     if (!rows.length) return null;
                     return (
                       <Fragment key={type}>
-                        <tr className="bg-gray-100"><td colSpan={4} className="px-4 py-1.5 text-xs font-semibold text-gray-500 uppercase">{TYPE_LABELS[type]}</td></tr>
+                        <tr className="bg-gray-100"><td colSpan={6} className="px-4 py-1.5 text-xs font-semibold text-gray-500 uppercase">{TYPE_LABELS[type]}</td></tr>
                         {rows.map(r => {
-                          const v = +(r.b - r.a).toFixed(2);
+                          const aNet = r.aDebit - r.aCredit;
+                          const bNet = r.bDebit - r.bCredit;
+                          const v = +(bNet - aNet).toFixed(2);
                           return (
                             <tr key={r.code} className="border-b hover:bg-gray-50">
                               <td className="px-4 py-2.5 text-sm text-gray-700"><span className="font-mono text-xs text-gray-400 mr-2">{r.code}</span>{r.name}</td>
-                              <td className="px-4 py-2.5 text-right text-sm text-gray-600">{fmtNet(r.a)}</td>
-                              <td className="px-4 py-2.5 text-right text-sm text-gray-600">{fmtNet(r.b)}</td>
-                              <td className={`px-4 py-2.5 text-right text-sm font-medium ${v > 0 ? 'text-green-600' : v < 0 ? 'text-red-600' : 'text-gray-400'}`}>
+                              <td className="px-4 py-2.5 text-right text-sm text-gray-600 border-l border-gray-100">{fmt(r.aDebit)}</td>
+                              <td className="px-4 py-2.5 text-right text-sm text-gray-600">{fmt(r.aCredit)}</td>
+                              <td className="px-4 py-2.5 text-right text-sm text-gray-600 border-l border-gray-100">{fmt(r.bDebit)}</td>
+                              <td className="px-4 py-2.5 text-right text-sm text-gray-600">{fmt(r.bCredit)}</td>
+                              <td className={`px-4 py-2.5 text-right text-sm font-medium border-l border-gray-100 ${v > 0 ? 'text-green-600' : v < 0 ? 'text-red-600' : 'text-gray-400'}`}>
                                 {v === 0 ? '—' : `${v > 0 ? '▲' : '▼'} ${fmt(v)}`}
                               </td>
                             </tr>
